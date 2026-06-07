@@ -99,7 +99,6 @@ export default function WatchPage() {
               allowFullScreen
               allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
               referrerPolicy="origin"
-              sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-presentation"
             />
           )}
         </div>
