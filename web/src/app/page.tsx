@@ -8,7 +8,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 async function fetchData(endpoint: string) {
   try {
     const res = await fetch(`${API_BASE}${endpoint}`, {
-      cache: "no-store",
+      next: { revalidate: 3600 },
     });
     if (!res.ok) return [];
     const json = await res.json();

@@ -3,9 +3,11 @@ import MediaCard from "../components/MediaCard";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-async function getTrendingMovies() {
+async function getMovies() {
   try {
-    const res = await fetch(`${API_BASE}/trending/movies`, { cache: "no-store" });
+    const res = await fetch(`${API_BASE}/trending/movies`, {
+      next: { revalidate: 3600 },
+    });
     if (!res.ok) return [];
     const json = await res.json();
     return json.data || [];
@@ -20,7 +22,7 @@ export const metadata = {
 };
 
 export default async function MoviesPage() {
-  const movies = await getTrendingMovies();
+  const movies = await getMovies();
 
   return (
     <main className="min-h-screen pt-24 px-6 md:px-10 lg:px-14 max-w-[1600px] mx-auto">

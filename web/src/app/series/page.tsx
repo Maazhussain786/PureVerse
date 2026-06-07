@@ -5,7 +5,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 async function getTrendingSeries() {
   try {
-    const res = await fetch(`${API_BASE}/trending/series`, { cache: "no-store" });
+    const res = await fetch(`${API_BASE}/trending/series`, {
+      next: { revalidate: 3600 },
+    });
     if (!res.ok) return [];
     const json = await res.json();
     return json.data || [];

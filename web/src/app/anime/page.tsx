@@ -6,8 +6,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 async function getAnime() {
   try {
     const [trendingRes, popularRes] = await Promise.all([
-      fetch(`${API_BASE}/trending/anime`, { cache: "no-store" }),
-      fetch(`${API_BASE}/popular/anime`, { cache: "no-store" }),
+      fetch(`${API_BASE}/trending/anime`, { next: { revalidate: 3600 } }),
+      fetch(`${API_BASE}/popular/anime`, { next: { revalidate: 3600 } }),
     ]);
 
     const trending = trendingRes.ok
