@@ -24,13 +24,11 @@ function typePillClass(type: string): string {
   return "type-pill type-pill-anime";
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
-
-/** Route MAL images through our backend proxy to bypass hotlinking protection */
+/** Route MAL images through our Next.js backend proxy to bypass hotlinking protection */
 function proxyImage(url: string): string {
   if (!url) return "";
   if (url.includes("myanimelist.net")) {
-    return `${API_BASE}/proxy/image?url=${encodeURIComponent(url)}`;
+    return `/api/proxy/image?url=${encodeURIComponent(url)}`;
   }
   return url;
 }
@@ -52,7 +50,14 @@ export default function MediaCard({
       className="media-card flex-none w-[140px] sm:w-[160px] md:w-[180px] group relative rounded-xl overflow-visible"
     >
       {/* Poster */}
-      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-[var(--bg-card)]">
+      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-[var(--bg-card)] shadow-lg shadow-black/40 border border-white/5 group-hover:border-white/10 transition-colors">
+        {/* Episode Badge (Mock for Continue Watching style) */}
+        {type === "tv" || type === "anime" ? (
+          <div className="absolute top-2 left-2 z-10 bg-black/70 backdrop-blur-md border border-white/10 rounded-md px-2 py-0.5 shadow-md">
+            <span className="text-[10px] font-bold text-white tracking-wider">EP 12</span>
+          </div>
+        ) : null}
+
         {imgSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
