@@ -17,11 +17,13 @@ interface HeroSectionProps {
   item: HeroItem;
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
 /** Route MAL images through backend proxy */
 function proxyImage(url: string): string {
   if (!url) return "";
   if (url.includes("myanimelist.net")) {
-    return `http://localhost:5000/api/proxy/image?url=${encodeURIComponent(url)}`;
+    return `${API_BASE}/proxy/image?url=${encodeURIComponent(url)}`;
   }
   return url;
 }
