@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import NodeCache from 'node-cache';
 import { UnifiedMediaItem, MediaDetails, UnifiedEpisodeItem } from '../models/media';
+import { searchTmdb } from './metadataService';
 
 const JIKAN_BASE_URL = process.env.JIKAN_BASE_URL || 'https://api.jikan.moe/v4';
 const TMDB_IMAGE_BASE = process.env.TMDB_IMAGE_BASE || 'https://image.tmdb.org/t/p';
@@ -10,7 +11,6 @@ const cache = new NodeCache({ stdTTL: 900 });
 // Strict queue-based rate limiter: Jikan allows ~3 requests/sec
 let queue: Promise<any> = Promise.resolve();
 async function rateLimitedGet(client: AxiosInstance, url: string, params?: any) {
-  // Chain each request onto the queue, adding a 350ms delay
   const requestPromise = queue.then(async () => {
     try {
       return await client.get(url, { params });
@@ -18,16 +18,14 @@ async function rateLimitedGet(client: AxiosInstance, url: string, params?: any) 
       await new Promise(resolve => setTimeout(resolve, 350));
     }
   });
-  
-  // Update the queue, catching errors so the queue doesn't break
   queue = requestPromise.catch(() => {});
-  
   return requestPromise;
 }
 
 const jikanApi = axios.create({
   baseURL: JIKAN_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 8000, // 8-second timeout to prevent queue stalling
 });
 
 function mapJikanToUnified(item: any): UnifiedMediaItem {
@@ -45,6 +43,21 @@ function mapJikanToUnified(item: any): UnifiedMediaItem {
   };
 }
 
+async function attachTmdbImages(items: UnifiedMediaItem[]) {
+  await Promise.all(items.map(async (item) => {
+    try {
+      const tmdbResults = await searchTmdb(item.title);
+      if (tmdbResults && tmdbResults.length > 0 && tmdbResults[0].posterUrl) {
+        item.posterUrl = tmdbResults[0].posterUrl;
+        item.bannerUrl = tmdbResults[0].bannerUrl || tmdbResults[0].posterUrl;
+      }
+    } catch {
+      // fallback to original mal image
+    }
+  }));
+  return items;
+}
+
 // ─── Trending / Top Anime ─────────────────────────────────
 export async function fetchTrendingAnime(): Promise<UnifiedMediaItem[]> {
   const cacheKey = 'jikan_trending_anime';
@@ -56,7 +69,8 @@ export async function fetchTrendingAnime(): Promise<UnifiedMediaItem[]> {
       filter: 'airing',
       limit: 20,
     });
-    const results = response.data.data.map(mapJikanToUnified);
+    let results = response.data.data.map(mapJikanToUnified);
+    results = await attachTmdbImages(results);
     cache.set(cacheKey, results);
     return results;
   } catch (error) {
@@ -75,7 +89,8 @@ export async function fetchPopularAnime(): Promise<UnifiedMediaItem[]> {
       filter: 'bypopularity',
       limit: 20,
     });
-    const results = response.data.data.map(mapJikanToUnified);
+    let results = response.data.data.map(mapJikanToUnified);
+    results = await attachTmdbImages(results);
     cache.set(cacheKey, results);
     return results;
   } catch (error) {
@@ -96,7 +111,8 @@ export async function searchAnime(query: string): Promise<UnifiedMediaItem[]> {
       limit: 20,
       sfw: true,
     });
-    const results = response.data.data.map(mapJikanToUnified);
+    let results = response.data.data.map(mapJikanToUnified);
+    results = await attachTmdbImages(results);
     cache.set(cacheKey, results, 600);
     return results;
   } catch (error) {
@@ -164,6 +180,16 @@ export async function getAnimeDetails(malId: string): Promise<MediaDetails> {
     status: data.status || undefined,
     totalEpisodes: data.episodes || undefined,
   };
+
+  try {
+    const tmdbResults = await searchTmdb(details.title);
+    if (tmdbResults && tmdbResults.length > 0 && tmdbResults[0].posterUrl) {
+      details.posterUrl = tmdbResults[0].posterUrl;
+      details.bannerUrl = tmdbResults[0].bannerUrl || tmdbResults[0].posterUrl;
+    }
+  } catch {
+    // fallback to original mal image
+  }
 
   cache.set(cacheKey, details, 3600);
   return details;
