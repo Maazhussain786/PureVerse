@@ -1,9 +1,14 @@
-import React from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useUserState } from "../../../components/UserStateContext";
+import SeasonSelector from "../../../components/SeasonSelector";
+import MediaRow from "../../../components/MediaRow";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
-/** Route MAL images through backend proxy */
 function proxyImage(url: string): string {
   if (!url) return "";
   if (url.includes("myanimelist.net")) {
@@ -12,31 +17,104 @@ function proxyImage(url: string): string {
   return url;
 }
 
-async function getDetails(type: string, id: string) {
-  try {
-    const res = await fetch(`${API_BASE}/media/details/${type}/${id}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return json.data || null;
-  } catch {
-    return null;
-  }
+interface MediaDetailsData {
+  id: string;
+  type: string;
+  source: string;
+  title: string;
+  posterUrl: string;
+  bannerUrl: string;
+  rating: number;
+  releaseYear: number;
+  genres: string[];
+  synopsis: string;
+  cast: { name: string; character: string; profileUrl: string }[];
+  episodes: any[];
+  trailerUrl?: string;
+  runtime?: number;
+  status?: string;
+  totalSeasons?: number;
+  totalEpisodes?: number;
 }
 
-export default async function DetailsPage({
-  params,
-}: {
-  params: Promise<{ type: string; id: string }>;
-}) {
-  const { type, id } = await params;
-  const media = await getDetails(type, id);
+export default function DetailsPage() {
+  const params = useParams();
+  const type = params.type as string;
+  const id = params.id as string;
+
+  const { isInWatchlist, addToWatchlist, removeFromWatchlist } = useUserState();
+
+  const [media, setMedia] = useState<MediaDetailsData | null>(null);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchDetails() {
+      try {
+        setLoading(true);
+        const res = await fetch(`${API_BASE}/media/details/${type}/${id}`, {
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const json = await res.json();
+          setMedia(json.data || null);
+        }
+      } catch { /* ignore */ } finally {
+        setLoading(false);
+      }
+    }
+    fetchDetails();
+  }, [type, id]);
+
+  useEffect(() => {
+    async function fetchRecs() {
+      try {
+        const res = await fetch(`${API_BASE}/media/recommendations/${type}/${id}`);
+        if (res.ok) {
+          const json = await res.json();
+          setRecommendations(json.data || []);
+        }
+      } catch { /* ignore */ }
+    }
+    fetchRecs();
+  }, [type, id]);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen pt-16">
+        <div className="relative w-full h-[50vh] md:h-[60vh] bg-[var(--bg-secondary)]">
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/60 to-transparent" />
+        </div>
+        <div className="relative z-10 -mt-52 md:-mt-64 px-6 md:px-10 lg:px-14 max-w-[1400px] mx-auto">
+          <div className="flex flex-col md:flex-row gap-8 md:gap-12 animate-pulse">
+            <div className="skeleton w-[200px] md:w-[260px] aspect-[2/3] rounded-2xl mx-auto md:mx-0" />
+            <div className="flex-1 pt-4 md:pt-20 space-y-4">
+              <div className="skeleton w-24 h-6 rounded-full" />
+              <div className="skeleton w-3/4 h-12 rounded-lg" />
+              <div className="skeleton w-full h-4 rounded" />
+              <div className="skeleton w-2/3 h-4 rounded" />
+              <div className="flex gap-4 mt-6">
+                <div className="skeleton w-40 h-12 rounded-lg" />
+                <div className="skeleton w-32 h-12 rounded-lg" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   if (!media) {
     return (
       <main className="min-h-screen pt-24 flex items-center justify-center">
         <div className="text-center">
+          <div className="w-20 h-20 rounded-full bg-[var(--bg-card)] flex items-center justify-center mx-auto mb-4">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4" />
+              <path d="M12 16h.01" />
+            </svg>
+          </div>
           <h1 className="text-2xl font-bold text-white mb-3">Media Not Found</h1>
           <p className="text-[var(--text-muted)] mb-6">
             Could not load details. Make sure the backend is running.
@@ -55,6 +133,23 @@ export default async function DetailsPage({
       : media.rating >= 5
         ? "text-yellow-400"
         : "text-red-400";
+
+  const inWatchlist = isInWatchlist(media.id);
+
+  const handleWatchlistToggle = () => {
+    if (inWatchlist) {
+      removeFromWatchlist(media.id);
+    } else {
+      addToWatchlist({
+        id: media.id,
+        type: media.type,
+        title: media.title,
+        posterUrl: media.posterUrl,
+        rating: media.rating,
+        releaseYear: media.releaseYear,
+      });
+    }
+  };
 
   return (
     <main className="min-h-screen">
@@ -152,11 +247,11 @@ export default async function DetailsPage({
             )}
 
             {/* Synopsis */}
-            <p className="text-[var(--text-secondary)] text-sm md:text-base leading-relaxed mb-8 max-w-3xl">
+            <p className="text-[var(--text-secondary)] text-sm md:text-base leading-relaxed mb-6 max-w-3xl">
               {media.synopsis || "No synopsis available."}
             </p>
 
-            {/* Season/Episode Info */}
+            {/* Season/Episode Stats */}
             {(media.totalSeasons || media.totalEpisodes) && (
               <div className="flex gap-6 mb-6">
                 {media.totalSeasons && (
@@ -174,17 +269,32 @@ export default async function DetailsPage({
               </div>
             )}
 
-            {/* CTA */}
-            <div className="flex flex-wrap items-center gap-4">
+            {/* CTA Buttons */}
+            <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={`/watch/${type}/${id}`}
-                className="btn-primary text-base px-8 py-3.5"
+                className="bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-black font-black uppercase tracking-wider text-sm px-8 py-3.5 rounded-lg flex items-center gap-2.5 transition-all shadow-[0_0_20px_var(--accent-glow)] hover:shadow-[0_0_30px_var(--accent-glow)] hover:scale-[1.03] active:scale-[0.98]"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                   <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
                 Watch Now
               </Link>
+              <button
+                onClick={handleWatchlistToggle}
+                className={`btn-glass text-sm px-6 py-3 ${inWatchlist ? "border-[var(--accent-primary)]/40 text-[var(--accent-primary)]" : ""}`}
+              >
+                {inWatchlist ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                )}
+                {inWatchlist ? "In My List" : "Add to List"}
+              </button>
               {media.trailerUrl && (
                 <a
                   href={media.trailerUrl}
@@ -196,7 +306,7 @@ export default async function DetailsPage({
                     <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.934a.5.5 0 0 0-.777-.416L16 11" />
                     <rect width="14" height="12" x="2" y="6" rx="2" />
                   </svg>
-                  Watch Trailer
+                  Trailer
                 </a>
               )}
             </div>
@@ -219,7 +329,7 @@ export default async function DetailsPage({
                   key={`${person.name}-${i}`}
                   className="flex-none w-[100px] text-center group"
                 >
-                  <div className="w-[80px] h-[80px] mx-auto rounded-full overflow-hidden glass-panel mb-2">
+                  <div className="w-[80px] h-[80px] mx-auto rounded-full overflow-hidden glass-panel mb-2 ring-2 ring-transparent group-hover:ring-[var(--accent-primary)]/30 transition-all">
                     {person.profileUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -230,7 +340,7 @@ export default async function DetailsPage({
                         referrerPolicy="no-referrer"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)] text-lg">
+                      <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)] text-lg bg-[var(--bg-elevated)]">
                         {person.name?.charAt(0) || "?"}
                       </div>
                     )}
@@ -247,8 +357,22 @@ export default async function DetailsPage({
           </section>
         )}
 
-        {/* Episodes Section */}
-        {media.episodes && media.episodes.length > 0 && (
+        {/* Season & Episode Selector (for TV shows with seasons) */}
+        {media.totalSeasons && media.totalSeasons > 0 && (
+          <section className="mt-14">
+            <SeasonSelector
+              mediaId={media.id}
+              mediaType={media.type}
+              totalSeasons={media.totalSeasons}
+              initialEpisodes={media.episodes}
+              initialSeason={media.totalSeasons}
+              mode="details"
+            />
+          </section>
+        )}
+
+        {/* Episodes for anime (no season concept) */}
+        {!media.totalSeasons && media.episodes && media.episodes.length > 0 && (
           <section className="mt-14">
             <h2
               className="text-xl font-bold mb-6 flex items-center gap-3"
@@ -256,21 +380,15 @@ export default async function DetailsPage({
             >
               <div className="w-1 h-5 rounded-full bg-[var(--accent-primary)]" />
               Episodes
-              {media.totalSeasons && (
-                <span className="text-sm font-normal text-[var(--text-muted)]">
-                  Season {media.totalSeasons}
-                </span>
-              )}
             </h2>
             <div className="grid gap-3">
               {media.episodes.map((ep: any) => (
                 <Link
                   key={ep.id}
                   href={`/watch/${type}/${id}?season=${ep.seasonNumber || 1}&episode=${ep.episodeNumber}`}
-                  className="glass-panel glass-panel-hover rounded-xl p-4 flex gap-4 items-center transition-all duration-200 group"
+                  className="episode-card rounded-xl p-4 flex gap-4 items-center border border-white/5 group"
                 >
-                  {/* Episode Thumbnail */}
-                  <div className="flex-shrink-0 w-[120px] md:w-[160px] aspect-video rounded-lg overflow-hidden bg-[var(--bg-card)]">
+                  <div className="flex-shrink-0 w-[120px] md:w-[160px] aspect-video rounded-lg overflow-hidden bg-[var(--bg-card)] relative">
                     {ep.thumbnailUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -287,8 +405,10 @@ export default async function DetailsPage({
                         </svg>
                       </div>
                     )}
+                    <div className="absolute bottom-1 right-1 bg-black/70 text-[10px] font-bold text-white px-1.5 py-0.5 rounded">
+                      {ep.episodeNumber}
+                    </div>
                   </div>
-                  {/* Episode Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[var(--text-muted)] mb-1">
                       {ep.seasonNumber ? `S${ep.seasonNumber} · ` : ""}E{ep.episodeNumber}
@@ -302,12 +422,6 @@ export default async function DetailsPage({
                         {ep.synopsis}
                       </p>
                     )}
-                  </div>
-                  {/* Play icon */}
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full glass-panel flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--accent-primary)">
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
                   </div>
                 </Link>
               ))}
@@ -334,6 +448,16 @@ export default async function DetailsPage({
                 title="Trailer"
               />
             </div>
+          </section>
+        )}
+
+        {/* More Like This */}
+        {recommendations.length > 0 && (
+          <section className="mt-14">
+            <MediaRow
+              title="More Like This"
+              items={recommendations}
+            />
           </section>
         )}
 
