@@ -2,15 +2,15 @@
 
 /* ─── Custom Properties (Design Tokens) ─── */
 :root {
-  --bg-primary: #06060b;
-  --bg-secondary: #0d0d15;
-  --bg-card: #12121c;
-  --bg-elevated: #1a1a28;
+  --bg-primary: #0a0a0c;
+  --bg-secondary: #121216;
+  --bg-card: #18181d;
+  --bg-elevated: #202026;
 
-  --accent-primary: #7C4DFF;
-  --accent-hover: #6a3de8;
-  --accent-glow: rgba(124, 77, 255, 0.35);
-  --accent-subtle: rgba(124, 77, 255, 0.12);
+  --accent-primary: #a3e635; /* Neon Green / Lime */
+  --accent-hover: #bcf062;
+  --accent-glow: rgba(163, 230, 53, 0.35);
+  --accent-subtle: rgba(163, 230, 53, 0.12);
 
   --text-primary: #f0f0f5;
   --text-secondary: #8b8b9e;
