@@ -1,4 +1,4 @@
-# PureVerse (formerly AniVerse)
+# PureVerse
 
 > **⚠️ STATUS: UNDER CONSTRUCTION ⚠️**  
 > This project is currently in active development. The core architecture is scaffolded, but full metadata integration and streaming resolution logic are still being actively implemented.
