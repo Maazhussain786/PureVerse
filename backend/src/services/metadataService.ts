@@ -21,7 +21,7 @@ function mapTmdbToUnified(item: any): UnifiedMediaItem {
   const mediaType = item.media_type || (item.first_air_date ? 'tv' : 'movie');
   return {
     id: `tmdb_${item.id}`,
-    type: mediaType === 'tv' ? 'tv' : 'movie',
+    type: mediaType === 'anime' ? 'anime' : (mediaType === 'tv' ? 'tv' : 'movie'),
     source: 'tmdb',
     title: item.title || item.name || 'Untitled',
     posterUrl: item.poster_path
@@ -175,4 +175,154 @@ export async function getTmdbDetails(
 
   cache.set(cacheKey, details, 3600); // 1 hour cache
   return details;
+}
+
+// ─── Season Episodes ──────────────────────────────────────
+export async function fetchSeasonEpisodes(
+  tmdbId: string,
+  seasonNumber: number
+): Promise<UnifiedEpisodeItem[]> {
+  const cacheKey = `tmdb_season_${tmdbId}_${seasonNumber}`;
+  const cached = cache.get<UnifiedEpisodeItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const response = await tmdbApi.get(`/tv/${tmdbId}/season/${seasonNumber}`);
+  const episodes = (response.data.episodes || []).map((ep: any) => ({
+    id: `tmdb_ep_${ep.id}`,
+    seasonNumber: ep.season_number,
+    episodeNumber: ep.episode_number,
+    title: ep.name || `Episode ${ep.episode_number}`,
+    thumbnailUrl: ep.still_path
+      ? `${TMDB_IMAGE_BASE}/w300${ep.still_path}`
+      : '',
+    airDate: ep.air_date || '',
+    synopsis: ep.overview || '',
+  }));
+  cache.set(cacheKey, episodes, 3600);
+  return episodes;
+}
+
+// ─── Top Rated ────────────────────────────────────────────
+export async function fetchTopRatedMovies(): Promise<UnifiedMediaItem[]> {
+  const cacheKey = 'tmdb_top_rated_movies';
+  const cached = cache.get<UnifiedMediaItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const response = await tmdbApi.get('/movie/top_rated');
+  const results = response.data.results.map((item: any) =>
+    mapTmdbToUnified({ ...item, media_type: 'movie' })
+  );
+  cache.set(cacheKey, results);
+  return results;
+}
+
+export async function fetchTopRatedSeries(): Promise<UnifiedMediaItem[]> {
+  const cacheKey = 'tmdb_top_rated_series';
+  const cached = cache.get<UnifiedMediaItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const response = await tmdbApi.get('/tv/top_rated');
+  const results = response.data.results.map((item: any) =>
+    mapTmdbToUnified({ ...item, media_type: 'tv' })
+  );
+  cache.set(cacheKey, results);
+  return results;
+}
+
+// ─── Now Playing / New Releases ───────────────────────────
+export async function fetchNowPlayingMovies(): Promise<UnifiedMediaItem[]> {
+  const cacheKey = 'tmdb_now_playing';
+  const cached = cache.get<UnifiedMediaItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const response = await tmdbApi.get('/movie/now_playing');
+  const results = response.data.results.map((item: any) =>
+    mapTmdbToUnified({ ...item, media_type: 'movie' })
+  );
+  cache.set(cacheKey, results);
+  return results;
+}
+
+// ─── Recommendations ─────────────────────────────────────
+export async function fetchRecommendations(
+  type: 'movie' | 'tv',
+  tmdbId: string
+): Promise<UnifiedMediaItem[]> {
+  const cacheKey = `tmdb_recs_${type}_${tmdbId}`;
+  const cached = cache.get<UnifiedMediaItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const response = await tmdbApi.get(`/${type}/${tmdbId}/recommendations`);
+  const results = (response.data.results || []).slice(0, 12).map((item: any) =>
+    mapTmdbToUnified({ ...item, media_type: type })
+  );
+  cache.set(cacheKey, results, 3600);
+  return results;
+}
+
+// ─── Anime (via TMDB to bypass Jikan rate limits) ─────────
+export async function fetchTrendingAnimeTmdb(): Promise<UnifiedMediaItem[]> {
+  const cacheKey = 'tmdb_trending_anime';
+  const cached = cache.get<UnifiedMediaItem[]>(cacheKey);
+  if (cached) return cached;
+
+  // TMDB Discover for Anime (Genre 16 = Animation, Original Lang = Japanese)
+  // Sorted by popularity for currently airing or recent
+  const dateStr = new Date();
+  dateStr.setFullYear(dateStr.getFullYear() - 1);
+  const minDate = dateStr.toISOString().split('T')[0];
+
+  const response = await tmdbApi.get('/discover/tv', {
+    params: {
+      with_genres: '16',
+      with_original_language: 'ja',
+      sort_by: 'popularity.desc',
+      'first_air_date.gte': minDate,
+    },
+  });
+  const results = response.data.results.map((item: any) =>
+    mapTmdbToUnified({ ...item, media_type: 'anime' })
+  );
+  cache.set(cacheKey, results);
+  return results;
+}
+
+export async function fetchPopularAnimeTmdb(): Promise<UnifiedMediaItem[]> {
+  const cacheKey = 'tmdb_popular_anime';
+  const cached = cache.get<UnifiedMediaItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const response = await tmdbApi.get('/discover/tv', {
+    params: {
+      with_genres: '16',
+      with_original_language: 'ja',
+      sort_by: 'vote_count.desc', // All-time popular
+    },
+  });
+  const results = response.data.results.map((item: any) =>
+    mapTmdbToUnified({ ...item, media_type: 'anime' })
+  );
+  cache.set(cacheKey, results);
+  return results;
+}
+
+export async function searchAnimeTmdb(query: string): Promise<UnifiedMediaItem[]> {
+  const cacheKey = `tmdb_search_anime_${query}`;
+  const cached = cache.get<UnifiedMediaItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const response = await tmdbApi.get('/search/tv', {
+    params: { query, include_adult: false },
+  });
+  
+  // Filter for Japanese Animation
+  const results = response.data.results
+    .filter((item: any) => 
+      item.original_language === 'ja' && 
+      (item.genre_ids || []).includes(16)
+    )
+    .map((item: any) => mapTmdbToUnified({ ...item, media_type: 'anime' }));
+    
+  cache.set(cacheKey, results, 600);
+  return results;
 }

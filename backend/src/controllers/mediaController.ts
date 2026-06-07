@@ -5,23 +5,32 @@ import {
   fetchTrendingSeries,
   searchTmdb,
   getTmdbDetails,
+  fetchSeasonEpisodes,
+  fetchTopRatedMovies,
+  fetchTopRatedSeries,
+  fetchNowPlayingMovies,
+  fetchRecommendations,
+  fetchTrendingAnimeTmdb,
+  fetchPopularAnimeTmdb,
+  searchAnimeTmdb,
 } from '../services/metadataService';
-import {
-  fetchTrendingAnime,
-  fetchPopularAnime,
-  searchAnime,
-  getAnimeDetails,
-} from '../services/animeService';
+import { getAnimeDetails } from '../services/animeService';
 import { resolveVidSrcStream } from '../scrapers/vidsrc';
 
 // Deduplicate items by ID
 function deduplicateItems(items: any[]): any[] {
-  const seen = new Set<string>();
-  return items.filter((item) => {
-    if (seen.has(item.id)) return false;
-    seen.add(item.id);
-    return true;
-  });
+  const seen = new Map<string, any>();
+  for (const item of items) {
+    if (!seen.has(item.id)) {
+      seen.set(item.id, item);
+    } else {
+      // If a duplicate is found and it's an anime, upgrade the existing item's type to anime
+      if (item.type === 'anime') {
+        seen.get(item.id).type = 'anime';
+      }
+    }
+  }
+  return Array.from(seen.values());
 }
 
 // ─── Trending (Combined) ─────────────────────────────────
@@ -29,7 +38,7 @@ export const getTrending = async (req: Request, res: Response) => {
   try {
     const [tmdbResults, animeResults] = await Promise.allSettled([
       fetchTrendingAll(),
-      fetchTrendingAnime(),
+      fetchTrendingAnimeTmdb(),
     ]);
 
     const tmdb = tmdbResults.status === 'fulfilled' ? tmdbResults.value : [];
@@ -75,7 +84,7 @@ export const getTrendingSeries = async (req: Request, res: Response) => {
 // ─── Trending Anime ──────────────────────────────────────
 export const getTrendingAnime = async (req: Request, res: Response) => {
   try {
-    const data = await fetchTrendingAnime();
+    const data = await fetchTrendingAnimeTmdb();
     res.json({ success: true, data });
   } catch (error: any) {
     console.error('Trending anime error:', error?.message || error);
@@ -86,7 +95,7 @@ export const getTrendingAnime = async (req: Request, res: Response) => {
 // ─── Popular Anime ───────────────────────────────────────
 export const getPopularAnime = async (req: Request, res: Response) => {
   try {
-    const data = await fetchPopularAnime();
+    const data = await fetchPopularAnimeTmdb();
     res.json({ success: true, data: deduplicateItems(data) });
   } catch (error: any) {
     console.error('Popular anime error:', error?.message || error);
@@ -105,7 +114,7 @@ export const searchMedia = async (req: Request, res: Response) => {
 
     const [tmdbResults, animeResults] = await Promise.allSettled([
       searchTmdb(query),
-      searchAnime(query),
+      searchAnimeTmdb(query),
     ]);
 
     const tmdb = tmdbResults.status === 'fulfilled' ? tmdbResults.value : [];
@@ -135,6 +144,12 @@ export const getMediaDetails = async (req: Request, res: Response) => {
     // Default to TMDB
     const tmdbType = type === 'anime' ? 'tv' : (type as 'movie' | 'tv');
     const details = await getTmdbDetails(tmdbType, rawId);
+    
+    // Preserve 'anime' type for frontend routing
+    if (type === 'anime') {
+      details.type = 'anime';
+    }
+
     res.json({ success: true, data: details });
   } catch (error: any) {
     console.error('Details error:', error?.message || error);
@@ -158,5 +173,65 @@ export const getMediaStream = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Stream error:', error?.message || error);
     res.status(500).json({ success: false, message: 'Failed to resolve stream' });
+  }
+};
+
+// ─── Season Episodes ─────────────────────────────────────
+export const getSeasonEpisodes = async (req: Request, res: Response) => {
+  try {
+    const tmdbId = req.params.id as string;
+    const seasonNumber = parseInt(req.params.season as string, 10);
+    if (isNaN(seasonNumber)) {
+      res.status(400).json({ success: false, message: 'Invalid season number' });
+      return;
+    }
+    const episodes = await fetchSeasonEpisodes(tmdbId, seasonNumber);
+    res.json({ success: true, data: episodes });
+  } catch (error: any) {
+    console.error('Season episodes error:', error?.message || error);
+    res.status(500).json({ success: false, message: 'Failed to fetch season episodes' });
+  }
+};
+
+// ─── Top Rated ───────────────────────────────────────────
+export const getTopRated = async (req: Request, res: Response) => {
+  try {
+    const type = req.params.type as string;
+    let data;
+    if (type === 'movies') {
+      data = await fetchTopRatedMovies();
+    } else {
+      data = await fetchTopRatedSeries();
+    }
+    res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Top rated error:', error?.message || error);
+    res.status(500).json({ success: false, message: 'Failed to fetch top rated' });
+  }
+};
+
+// ─── Now Playing ─────────────────────────────────────────
+export const getNowPlaying = async (req: Request, res: Response) => {
+  try {
+    const data = await fetchNowPlayingMovies();
+    res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Now playing error:', error?.message || error);
+    res.status(500).json({ success: false, message: 'Failed to fetch now playing' });
+  }
+};
+
+// ─── Recommendations ─────────────────────────────────────
+export const getRecommendations = async (req: Request, res: Response) => {
+  try {
+    const type = req.params.type as string;
+    const id = req.params.id as string;
+    const rawId = id.replace('tmdb_', '');
+    const tmdbType = type === 'anime' ? 'tv' : (type as 'movie' | 'tv');
+    const data = await fetchRecommendations(tmdbType, rawId);
+    res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Recommendations error:', error?.message || error);
+    res.status(500).json({ success: false, message: 'Failed to fetch recommendations' });
   }
 };

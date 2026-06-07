@@ -14,10 +14,13 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@consumet/extensions": "^1.8.8",
     "axios": "^1.17.0",
+    "axios-proxy-builder": "^0.1.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "https-proxy-agent": "^9.0.0",
     "node-cache": "^5.1.2",
     "socket.io": "^4.8.3"
   },
