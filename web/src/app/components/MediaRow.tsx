@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import MediaCard from "./MediaCard";
 
 interface MediaItem {
@@ -10,6 +10,8 @@ interface MediaItem {
   posterUrl: string;
   rating: number;
   releaseYear: number;
+  progress?: number;
+  episodeLabel?: string;
 }
 
 interface MediaRowProps {
@@ -21,6 +23,24 @@ interface MediaRowProps {
 
 export default function MediaRow({ title, items, viewAllHref, icon }: MediaRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    setCanScrollLeft(scrollLeft > 10);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 10);
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (el) {
+      el.addEventListener("scroll", checkScroll, { passive: true });
+      return () => el.removeEventListener("scroll", checkScroll);
+    }
+  }, [items]);
 
   const scroll = (direction: "left" | "right") => {
     if (!scrollRef.current) return;
@@ -34,13 +54,13 @@ export default function MediaRow({ title, items, viewAllHref, icon }: MediaRowPr
   if (!items || items.length === 0) return null;
 
   return (
-    <section className="mb-12">
+    <section className="mb-10">
       {/* Section Header */}
       <div className="flex items-center justify-between mb-5 px-1">
         <div className="flex items-center gap-3">
           {icon || <div className="w-1 h-6 rounded-full bg-[var(--accent-primary)]" />}
           <h2
-            className="text-xl md:text-2xl font-bold text-white"
+            className="text-lg md:text-xl font-bold text-white"
             style={{ fontFamily: "var(--font-space)" }}
           >
             {title}
@@ -50,7 +70,7 @@ export default function MediaRow({ title, items, viewAllHref, icon }: MediaRowPr
           {viewAllHref && (
             <a
               href={viewAllHref}
-              className="text-xs text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors mr-2"
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors mr-2 font-medium"
             >
               View All →
             </a>
@@ -58,8 +78,13 @@ export default function MediaRow({ title, items, viewAllHref, icon }: MediaRowPr
           {/* Scroll Arrows */}
           <button
             onClick={() => scroll("left")}
-            className="w-8 h-8 rounded-full glass-panel flex items-center justify-center text-[var(--text-secondary)] hover:text-white hover:bg-white/10 transition-all duration-200"
+            className={`w-8 h-8 rounded-full glass-panel flex items-center justify-center transition-all duration-200 ${
+              canScrollLeft
+                ? "text-[var(--text-secondary)] hover:text-white hover:bg-white/10"
+                : "text-[var(--text-muted)]/30 cursor-default opacity-30"
+            }`}
             aria-label="Scroll left"
+            disabled={!canScrollLeft}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="m15 18-6-6 6-6" />
@@ -67,8 +92,13 @@ export default function MediaRow({ title, items, viewAllHref, icon }: MediaRowPr
           </button>
           <button
             onClick={() => scroll("right")}
-            className="w-8 h-8 rounded-full glass-panel flex items-center justify-center text-[var(--text-secondary)] hover:text-white hover:bg-white/10 transition-all duration-200"
+            className={`w-8 h-8 rounded-full glass-panel flex items-center justify-center transition-all duration-200 ${
+              canScrollRight
+                ? "text-[var(--text-secondary)] hover:text-white hover:bg-white/10"
+                : "text-[var(--text-muted)]/30 cursor-default opacity-30"
+            }`}
             aria-label="Scroll right"
+            disabled={!canScrollRight}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="m9 18 6-6-6-6" />
@@ -77,22 +107,28 @@ export default function MediaRow({ title, items, viewAllHref, icon }: MediaRowPr
         </div>
       </div>
 
-      {/* Scrollable Row */}
-      <div
-        ref={scrollRef}
-        className="flex gap-4 md:gap-5 overflow-x-auto pb-4 hide-scrollbar scroll-smooth"
-      >
-        {items.map((item, index) => (
-          <MediaCard
-            key={`${item.id}-${index}`}
-            id={item.id}
-            type={item.type}
-            title={item.title}
-            posterUrl={item.posterUrl}
-            rating={item.rating}
-            releaseYear={item.releaseYear}
-          />
-        ))}
+      {/* Scrollable Row with Fade Edges */}
+      <div className="relative">
+        {canScrollLeft && <div className="row-fade-left" />}
+        {canScrollRight && <div className="row-fade-right" />}
+        <div
+          ref={scrollRef}
+          className="flex gap-4 md:gap-5 overflow-x-auto pb-4 hide-scrollbar scroll-smooth"
+        >
+          {items.map((item, index) => (
+            <MediaCard
+              key={`${item.id}-${index}`}
+              id={item.id}
+              type={item.type}
+              title={item.title}
+              posterUrl={item.posterUrl}
+              rating={item.rating}
+              releaseYear={item.releaseYear}
+              progress={item.progress}
+              episodeLabel={item.episodeLabel}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

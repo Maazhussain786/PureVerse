@@ -10,6 +10,8 @@ interface MediaCardProps {
   posterUrl: string;
   rating: number;
   releaseYear: number;
+  progress?: number; // 0-100, for continue watching
+  episodeLabel?: string; // e.g. "S2 E5"
 }
 
 function ratingClass(rating: number): string {
@@ -40,6 +42,8 @@ export default function MediaCard({
   posterUrl,
   rating,
   releaseYear,
+  progress,
+  episodeLabel,
 }: MediaCardProps) {
   const detailHref = `/details/${type}/${id}`;
   const imgSrc = proxyImage(posterUrl);
@@ -50,13 +54,13 @@ export default function MediaCard({
       className="media-card flex-none w-[140px] sm:w-[160px] md:w-[180px] group relative rounded-xl overflow-visible"
     >
       {/* Poster */}
-      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-[var(--bg-card)] shadow-lg shadow-black/40 border border-white/5 group-hover:border-white/10 transition-colors">
-        {/* Episode Badge (Mock for Continue Watching style) */}
-        {type === "tv" || type === "anime" ? (
+      <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-[var(--bg-card)] shadow-lg shadow-black/40 border border-white/5 group-hover:border-[var(--accent-primary)]/30 transition-colors duration-300">
+        {/* Episode Badge (real data) */}
+        {episodeLabel && (
           <div className="absolute top-2 left-2 z-10 bg-black/70 backdrop-blur-md border border-white/10 rounded-md px-2 py-0.5 shadow-md">
-            <span className="text-[10px] font-bold text-white tracking-wider">EP 12</span>
+            <span className="text-[10px] font-bold text-white tracking-wider">{episodeLabel}</span>
           </div>
-        ) : null}
+        )}
 
         {imgSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -90,15 +94,23 @@ export default function MediaCard({
         </div>
 
         {/* Hover Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
-          <div className="flex items-center gap-2 mb-1">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+          <div className="flex items-center gap-2 mb-1.5">
             <span className={typePillClass(type)}>
               {type === "tv" ? "Series" : type}
             </span>
           </div>
-          <p className="text-xs text-gray-300">
+          <p className="text-xs text-gray-300 font-medium">
             {releaseYear > 0 ? releaseYear : "TBA"}
           </p>
+          {/* Play button on hover */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="w-12 h-12 rounded-full bg-[var(--accent-primary)]/80 backdrop-blur-md flex items-center justify-center shadow-[0_0_20px_var(--accent-glow)] group-hover:scale-110 transition-transform">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="black">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+            </div>
+          </div>
         </div>
 
         {/* Rating Badge (always visible) */}
@@ -110,6 +122,13 @@ export default function MediaCard({
             <span className={`text-[10px] font-semibold ${ratingClass(rating)}`}>
               {rating.toFixed(1)}
             </span>
+          </div>
+        )}
+
+        {/* Progress Bar */}
+        {typeof progress === "number" && progress > 0 && (
+          <div className="progress-bar-container">
+            <div className="progress-bar-fill" style={{ width: `${Math.min(progress, 100)}%` }} />
           </div>
         )}
       </div>
