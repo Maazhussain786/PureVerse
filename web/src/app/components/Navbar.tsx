@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthContext";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
 const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/movies", label: "Movies" },
@@ -67,7 +69,7 @@ export default function Navbar() {
     const timeoutId = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(searchQuery.trim())}`);
         if (res.ok) {
           const json = await res.json();
           setSearchResults(json.data || []);

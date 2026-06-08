@@ -43,8 +43,8 @@ const icons = {
     </div>
   ),
   movie: (
-    <div className="w-7 h-7 rounded-lg bg-[rgba(124,77,255,0.15)] flex items-center justify-center">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c4dff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <div className="w-7 h-7 rounded-lg bg-[rgba(0,216,246,0.15)] flex items-center justify-center">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00D8F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect width="18" height="18" x="3" y="3" rx="2" />
         <path d="M7 3v18" />
         <path d="M3 7.5h4" />

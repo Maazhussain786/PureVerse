@@ -69,30 +69,16 @@ export default function MyListPage() {
       {filteredItems.length > 0 ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4 md:gap-6">
           {filteredItems.map((item) => (
-            <div key={item.id} className="relative group/card">
-              <MediaCard
-                id={item.id}
-                type={item.type}
-                title={item.title}
-                posterUrl={item.posterUrl}
-                rating={item.rating}
-                releaseYear={item.releaseYear}
-              />
-              {/* Remove button */}
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  removeFromWatchlist(item.id);
-                }}
-                className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500/80 backdrop-blur-md flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all hover:bg-red-500 z-20 shadow-lg"
-                title="Remove from list"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                  <path d="M18 6 6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            <MediaCard
+              key={item.id}
+              id={item.id}
+              type={item.type}
+              title={item.title}
+              posterUrl={item.posterUrl}
+              rating={item.rating}
+              releaseYear={item.releaseYear}
+              onRemove={() => removeFromWatchlist(item.id)}
+            />
           ))}
         </div>
       ) : watchlist.length > 0 ? (
