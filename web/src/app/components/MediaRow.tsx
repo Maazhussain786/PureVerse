@@ -113,7 +113,7 @@ export default function MediaRow({ title, items, viewAllHref, icon }: MediaRowPr
         {canScrollRight && <div className="row-fade-right" />}
         <div
           ref={scrollRef}
-          className="flex gap-4 md:gap-5 overflow-x-auto pb-4 hide-scrollbar scroll-smooth"
+          className="flex gap-4 md:gap-5 overflow-x-auto pt-3 pb-4 hide-scrollbar scroll-smooth"
         >
           {items.map((item, index) => (
             <MediaCard

@@ -50,8 +50,14 @@ export default function SeasonSelector({
   const rawId = mediaId.replace("tmdb_", "").replace("mal_", "");
 
   useEffect(() => {
-    // Don't refetch if we have initial data for the initial season
-    if (initialEpisodes && selectedSeason === (initialSeason || totalSeasons)) {
+    // Don't refetch if we have initial data for the selected season
+    const isInitialSeason = selectedSeason === (initialSeason || totalSeasons);
+    const initialEpisodesMatch = initialEpisodes && 
+      initialEpisodes.length > 0 && 
+      (initialEpisodes[0].seasonNumber === selectedSeason || 
+       (!initialEpisodes[0].seasonNumber && isInitialSeason));
+
+    if (initialEpisodesMatch) {
       setEpisodes(initialEpisodes);
       return;
     }

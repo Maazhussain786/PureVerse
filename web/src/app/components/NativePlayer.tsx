@@ -22,10 +22,19 @@ export default function NativePlayer({ url, subtitles, poster }: NativePlayerPro
     const video = videoRef.current;
     if (!video || !url) return;
 
+    // Destroy previous HLS instance before creating a new one
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
     if (Hls.isSupported()) {
       const hls = new Hls({
         capLevelToPlayerSize: true,
-        maxBufferSize: 30 * 1000 * 1000, // 30 MB
+        maxBufferSize: 30 * 1000 * 1000,
+        startPosition: -1,
+        lowLatencyMode: false,
+        backBufferLength: 90,
       });
 
       hls.loadSource(url);
@@ -33,23 +42,45 @@ export default function NativePlayer({ url, subtitles, poster }: NativePlayerPro
       hlsRef.current = hls;
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        // Ready to play
+        video.play().catch(() => {});
+      });
+
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              break;
+          }
+        }
       });
 
       return () => {
-        hls.destroy();
+        if (hlsRef.current) {
+          hlsRef.current.destroy();
+          hlsRef.current = null;
+        }
       };
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      // Native HLS support (Safari)
       video.src = url;
+      video.addEventListener('loadedmetadata', () => {
+        video.play().catch(() => {});
+      });
     }
   }, [url]);
 
   return (
-    <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black ring-1 ring-white/5 shadow-[0_8px_40px_rgba(0,0,0,0.8)] relative group">
+    <div className="w-full h-full bg-black relative flex items-center justify-center">
       <video
         ref={videoRef}
         controls
+        autoPlay
         crossOrigin="anonymous"
         poster={poster}
         className="w-full h-full outline-none"
