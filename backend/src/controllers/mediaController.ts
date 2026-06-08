@@ -16,6 +16,8 @@ import {
 } from '../services/metadataService';
 import { getAnimeDetails } from '../services/animeService';
 import { resolveVidSrcStream } from '../scrapers/vidsrc';
+import { getRecentAnime, getAnimeSeries } from '../services/anikotoService';
+import { updateProgress } from '../services/progressTracker';
 
 // Deduplicate items by ID
 function deduplicateItems(items: any[]): any[] {
@@ -233,5 +235,46 @@ export const getRecommendations = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Recommendations error:', error?.message || error);
     res.status(500).json({ success: false, message: 'Failed to fetch recommendations' });
+  }
+};
+
+// ─── Anikoto API Proxy ───────────────────────────────────
+export const getAnikotoRecent = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const data = await getRecentAnime(page);
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getAnikotoSeries = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    const data = await getAnimeSeries(id);
+    res.json({ success: true, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── Progress Tracking ───────────────────────────────────
+export const postWatchProgress = async (req: Request, res: Response) => {
+  try {
+    const { mediaId, timestamp, duration } = req.body;
+    if (!mediaId || timestamp === undefined || duration === undefined) {
+      res.status(400).json({ success: false, message: 'Missing required fields' });
+      return;
+    }
+    
+    // In a real app, userId would come from JWT or session
+    const userId = 'default_user';
+    const progress = await updateProgress(userId, mediaId, timestamp, duration);
+    
+    res.json({ success: true, data: progress });
+  } catch (error: any) {
+    console.error('Progress tracking error:', error?.message);
+    res.status(500).json({ success: false, message: 'Failed to update progress' });
   }
 };

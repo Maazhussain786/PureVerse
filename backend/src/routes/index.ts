@@ -12,6 +12,9 @@ import {
   getTopRated,
   getNowPlaying,
   getRecommendations,
+  getAnikotoRecent,
+  getAnikotoSeries,
+  postWatchProgress,
 } from '../controllers/mediaController';
 
 const router = Router();
@@ -46,6 +49,13 @@ router.get('/media/recommendations/:type/:id', getRecommendations);
 
 // Anime Native Stream
 router.get('/anime/stream', getAnimeStream);
+
+// Anikoto Proxy Routes
+router.get('/anime/recent', getAnikotoRecent);
+router.get('/anime/series/:id', getAnikotoSeries);
+
+// Progress Tracking Route
+router.post('/watch/progress', postWatchProgress);
 
 export default router;
 
