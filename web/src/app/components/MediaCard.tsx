@@ -8,10 +8,13 @@ interface MediaCardProps {
   type: string;
   title: string;
   posterUrl: string;
+  bannerUrl?: string; // landscape backdrop, used by the "landscape" layout
   rating: number;
   releaseYear: number;
   progress?: number; // 0-100, for continue watching
   episodeLabel?: string; // e.g. "S2 E5"
+  rank?: number; // 1-based rank badge (Top 10 rows)
+  layout?: "portrait" | "landscape";
   onRemove?: () => void;
 }
 
@@ -21,10 +24,11 @@ function ratingClass(rating: number): string {
   return "rating-low";
 }
 
-function typePillClass(type: string): string {
-  if (type === "movie") return "type-pill type-pill-movie";
-  if (type === "tv") return "type-pill type-pill-tv";
-  return "type-pill type-pill-anime";
+function typeLabel(type: string): string {
+  if (type === "movie") return "Movie";
+  if (type === "tv") return "TV Show";
+  if (type === "anime") return "Anime";
+  return type;
 }
 
 /** Route MAL images through our Next.js backend proxy to bypass hotlinking protection */
@@ -41,25 +45,61 @@ export default function MediaCard({
   type,
   title,
   posterUrl,
+  bannerUrl,
   rating,
   releaseYear,
   progress,
   episodeLabel,
+  rank,
+  layout = "portrait",
   onRemove,
 }: MediaCardProps) {
   const detailHref = `/details/${type}/${id}`;
-  const imgSrc = proxyImage(posterUrl);
+  const isLandscape = layout === "landscape";
+
+  // Landscape cards prefer the backdrop; fall back to poster if there's no banner.
+  const imgSrc = proxyImage(isLandscape ? bannerUrl || posterUrl : posterUrl);
+
+  const widthClass = isLandscape
+    ? "w-[230px] sm:w-[280px] md:w-[320px]"
+    : "w-[140px] sm:w-[160px] md:w-[180px]";
+  const aspectClass = isLandscape ? "aspect-video" : "aspect-[2/3]";
+
+  const removeButton = onRemove ? (
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onRemove();
+      }}
+      className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500/80 backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 z-20 shadow-lg cursor-pointer"
+      title="Remove from list"
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+        <path d="M18 6 6 18M6 6l12 12" />
+      </svg>
+    </button>
+  ) : null;
 
   return (
-    <div
-      className="media-card flex-none w-[140px] sm:w-[160px] md:w-[180px] group relative rounded-xl overflow-visible"
-    >
+    <div className={`media-card flex-none ${widthClass} group relative overflow-visible`}>
       <Link href={detailHref} className="block w-full h-full">
-        {/* Poster */}
-        <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-[var(--bg-card)] shadow-lg shadow-black/40 border border-white/5 group-hover:border-[var(--accent-primary)]/30 transition-colors duration-300">
-          {/* Episode Badge (real data) */}
+        {/* Image */}
+        <div
+          className={`relative ${aspectClass} rounded-xl overflow-hidden bg-[var(--bg-card)] shadow-lg shadow-black/40 ring-1 ring-white/5 group-hover:ring-2 group-hover:ring-[var(--accent-primary)]/60 group-hover:shadow-[0_0_26px_var(--accent-glow)] transition-all duration-300`}
+        >
+          {/* Rank badge (Top 10) */}
+          {typeof rank === "number" && (
+            <div className="absolute top-2 left-2 z-10 w-7 h-7 rounded-lg bg-[var(--accent-primary)] flex items-center justify-center shadow-[0_0_14px_var(--accent-glow)]">
+              <span className="text-sm font-black text-black" style={{ fontFamily: "var(--font-space)" }}>
+                {rank}
+              </span>
+            </div>
+          )}
+
+          {/* Episode Badge (continue watching) */}
           {episodeLabel && (
-            <div className="absolute top-2 left-2 z-10 bg-black/70 backdrop-blur-md border border-white/10 rounded-md px-2 py-0.5 shadow-md">
+            <div className="absolute top-2 right-2 z-10 bg-black/70 backdrop-blur-md border border-white/10 rounded-md px-2 py-0.5 shadow-md">
               <span className="text-[10px] font-bold text-white tracking-wider">{episodeLabel}</span>
             </div>
           )}
@@ -85,47 +125,24 @@ export default function MediaCard({
           <div
             className={`w-full h-full items-center justify-center text-[var(--text-muted)] text-xs absolute inset-0 bg-[var(--bg-card)] ${imgSrc ? "hidden" : "flex"}`}
           >
-            <div className="text-center">
+            <div className="text-center px-2">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mx-auto mb-1 opacity-40">
                 <rect width="18" height="18" x="3" y="3" rx="2" />
                 <circle cx="9" cy="9" r="2" />
                 <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
               </svg>
-              <span className="opacity-50">{title.substring(0, 12)}</span>
+              <span className="opacity-50 line-clamp-1">{title}</span>
             </div>
           </div>
 
-          {/* Hover Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className={typePillClass(type)}>
-                {type === "tv" ? "Series" : type}
-              </span>
-            </div>
-            <p className="text-xs text-gray-300 font-medium">
-              {releaseYear > 0 ? releaseYear : "TBA"}
-            </p>
-            {/* Play button on hover */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-              <div className="w-12 h-12 rounded-full bg-[var(--accent-primary)]/80 backdrop-blur-md flex items-center justify-center shadow-[0_0_20px_var(--accent-glow)] group-hover:scale-110 transition-transform">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="black">
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* Rating Badge (always visible) */}
-          {rating > 0 && (
-            <div className="absolute top-2 right-2 glass-panel rounded-md px-1.5 py-0.5 flex items-center gap-1">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className={ratingClass(rating)}>
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          {/* Hover Overlay — clean darken + centered play */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-[var(--accent-primary)] flex items-center justify-center shadow-[0_0_22px_var(--accent-glow)] scale-90 group-hover:scale-100 transition-transform duration-300">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="black">
+                <polygon points="6 4 20 12 6 20 6 4" />
               </svg>
-              <span className={`text-[10px] font-semibold ${ratingClass(rating)}`}>
-                {rating.toFixed(1)}
-              </span>
             </div>
-          )}
+          </div>
 
           {/* Progress Bar */}
           {typeof progress === "number" && progress > 0 && (
@@ -135,28 +152,28 @@ export default function MediaCard({
           )}
         </div>
 
-        {/* Title */}
+        {/* Title + meta line (cineby-style) */}
         <div className="mt-2.5 px-0.5">
-          <h3 className="text-sm font-medium text-[var(--text-primary)] truncate group-hover:text-[var(--accent-primary)] transition-colors duration-200">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate group-hover:text-[var(--accent-primary)] transition-colors duration-200">
             {title}
           </h3>
+          <div className="flex items-center gap-1.5 mt-1 text-xs text-[var(--text-secondary)]">
+            {rating > 0 && (
+              <span className={`flex items-center gap-1 font-semibold ${ratingClass(rating)}`}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                {rating.toFixed(1)}
+              </span>
+            )}
+            {rating > 0 && releaseYear > 0 && <span className="w-1 h-1 rounded-full bg-[var(--text-muted)]" />}
+            {releaseYear > 0 && <span>{releaseYear}</span>}
+            <span className="w-1 h-1 rounded-full bg-[var(--text-muted)]" />
+            <span>{typeLabel(type)}</span>
+          </div>
         </div>
       </Link>
-      {onRemove && (
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onRemove();
-          }}
-          className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500/80 backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 z-20 shadow-lg cursor-pointer"
-          title="Remove from list"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-            <path d="M18 6 6 18M6 6l12 12" />
-          </svg>
-        </button>
-      )}
+      {removeButton}
     </div>
   );
 }

@@ -8,6 +8,7 @@ interface MediaItem {
   type: string;
   title: string;
   posterUrl: string;
+  bannerUrl?: string;
   rating: number;
   releaseYear: number;
   progress?: number;
@@ -19,9 +20,13 @@ interface MediaRowProps {
   items: MediaItem[];
   viewAllHref?: string;
   icon?: React.ReactNode;
+  /** Show a 1-based rank badge on each card (Top 10 rows). */
+  ranked?: boolean;
+  /** Card shape. "landscape" = wide 16:9 backdrop cards (cineby-style). */
+  layout?: "portrait" | "landscape";
 }
 
-export default function MediaRow({ title, items, viewAllHref, icon }: MediaRowProps) {
+export default function MediaRow({ title, items, viewAllHref, icon, ranked, layout = "portrait" }: MediaRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -44,7 +49,7 @@ export default function MediaRow({ title, items, viewAllHref, icon }: MediaRowPr
 
   const scroll = (direction: "left" | "right") => {
     if (!scrollRef.current) return;
-    const scrollAmount = 600;
+    const scrollAmount = layout === "landscape" ? 720 : 600;
     scrollRef.current.scrollBy({
       left: direction === "left" ? -scrollAmount : scrollAmount,
       behavior: "smooth",
@@ -54,13 +59,13 @@ export default function MediaRow({ title, items, viewAllHref, icon }: MediaRowPr
   if (!items || items.length === 0) return null;
 
   return (
-    <section className="mb-10">
+    <section className="mb-14 md:mb-16">
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-5 px-1">
+      <div className="flex items-center justify-between mb-4 px-1">
         <div className="flex items-center gap-3">
           {icon || <div className="w-1 h-6 rounded-full bg-[var(--accent-primary)]" />}
           <h2
-            className="text-lg md:text-xl font-bold text-white"
+            className="text-xl md:text-2xl font-bold text-white"
             style={{ fontFamily: "var(--font-space)" }}
           >
             {title}
@@ -122,10 +127,13 @@ export default function MediaRow({ title, items, viewAllHref, icon }: MediaRowPr
               type={item.type}
               title={item.title}
               posterUrl={item.posterUrl}
+              bannerUrl={item.bannerUrl}
               rating={item.rating}
               releaseYear={item.releaseYear}
               progress={item.progress}
               episodeLabel={item.episodeLabel}
+              rank={ranked ? index + 1 : undefined}
+              layout={layout}
             />
           ))}
         </div>
