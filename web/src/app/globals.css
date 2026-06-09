@@ -194,6 +194,16 @@ body {
   50% { height: 16px; }
 }
 
+@keyframes kenBurns {
+  0% { transform: scale(1.02) translate3d(0, 0, 0); }
+  100% { transform: scale(1.16) translate3d(-1.5%, -1.5%, 0); }
+}
+
+/* Slow cinematic zoom for the active hero backdrop (cineby-style) */
+.animate-ken-burns {
+  animation: kenBurns 14s ease-out forwards;
+}
+
 /* ─── Animation Utilities ─── */
 .animate-fade-in-up {
   animation: fadeInUp 0.6s var(--transition-smooth) both;
@@ -263,6 +273,23 @@ body {
 .rating-high { color: var(--accent-lime); }
 .rating-mid { color: #facc15; }
 .rating-low { color: #f87171; }
+
+/* ─── Top 10 Ranked Number (Netflix-style) ─── */
+.rank-number {
+  font-family: var(--font-space), sans-serif;
+  font-weight: 900;
+  line-height: 0.72;
+  letter-spacing: -0.06em;
+  color: var(--bg-primary);
+  -webkit-text-stroke: 2.5px var(--accent-primary);
+  text-shadow: 0 0 28px var(--accent-glow);
+  user-select: none;
+  transition: -webkit-text-stroke-color var(--transition-base), text-shadow var(--transition-base);
+}
+.media-card-ranked:hover .rank-number {
+  -webkit-text-stroke-color: var(--accent-hover);
+  text-shadow: 0 0 40px var(--accent-glow), 0 0 70px rgba(0, 245, 212, 0.25);
+}
 
 /* ─── Media Card Hover Effect ─── */
 .media-card {
