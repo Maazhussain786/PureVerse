@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "./AuthContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
@@ -15,6 +16,9 @@ const NAV_LINKS = [
 
 export default function Navbar() {
   const { user, isSignedIn, signIn, signOut } = useAuth();
+  const pathname = usePathname();
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -115,21 +119,26 @@ export default function Navbar() {
 
             {/* Desktop Nav Links */}
             <div className="hidden lg:flex items-center gap-1">
-              {NAV_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="px-3 py-2 rounded-md text-sm font-semibold text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-all duration-200"
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <Link
-                href="/mylist"
-                className="px-3 py-2 rounded-md text-sm font-semibold text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-all duration-200"
-              >
-                My List
-              </Link>
+              {[...NAV_LINKS, { href: "/mylist", label: "My List" }].map((link) => {
+                const active = isActive(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`relative px-3 py-2 rounded-md text-sm font-semibold transition-all duration-200 ${
+                      active
+                        ? "text-white"
+                        : "text-[var(--text-secondary)] hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    {link.label}
+                    {active && (
+                      <span className="absolute left-3 right-3 -bottom-0.5 h-0.5 rounded-full bg-[var(--accent-primary)] shadow-[0_0_8px_var(--accent-glow)]" />
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </div>
 
@@ -274,30 +283,23 @@ export default function Navbar() {
         {/* Mobile Nav Menu */}
         {mobileOpen && (
           <div className="lg:hidden border-t border-white/5 bg-[var(--bg-card)]/95 backdrop-blur-xl px-6 py-4 animate-fade-in shadow-2xl">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileOpen(false)}
-                className="block py-3 text-sm font-semibold text-[var(--text-secondary)] hover:text-white transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
-            <Link
-              href="/mylist"
-              onClick={() => setMobileOpen(false)}
-              className="block py-3 text-sm font-semibold text-[var(--text-secondary)] hover:text-white transition-colors"
-            >
-              My List
-            </Link>
-            <Link
-              href="/history"
-              onClick={() => setMobileOpen(false)}
-              className="block py-3 text-sm font-semibold text-[var(--text-secondary)] hover:text-white transition-colors"
-            >
-              Watch History
-            </Link>
+            {[...NAV_LINKS, { href: "/mylist", label: "My List" }, { href: "/history", label: "Watch History" }].map((link) => {
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileOpen(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex items-center gap-2 py-3 text-sm font-semibold transition-colors ${
+                    active ? "text-[var(--accent-primary)]" : "text-[var(--text-secondary)] hover:text-white"
+                  }`}
+                >
+                  {active && <span className="w-1 h-4 rounded-full bg-[var(--accent-primary)]" />}
+                  {link.label}
+                </Link>
+              );
+            })}
             {!isSignedIn && (
               <button
                 onClick={() => { signIn(); setMobileOpen(false); }}
