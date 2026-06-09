@@ -2,7 +2,7 @@ import React from "react";
 
 export function HeroSkeleton() {
   return (
-    <div className="relative w-full h-[82vh] md:h-[92vh] bg-[var(--bg-secondary)]">
+    <div className="relative w-full h-[85vh] md:h-[94vh] bg-[var(--bg-secondary)]">
       <div className="absolute bottom-0 left-0 right-0 p-8 md:p-14 lg:p-20">
         <div className="max-w-3xl">
           <div className="flex gap-2 mb-4">

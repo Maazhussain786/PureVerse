@@ -69,7 +69,7 @@ export default function HeroSection({ items }: HeroSectionProps) {
   const item = heroItems[activeIndex];
 
   return (
-    <div className="relative w-full h-[82vh] md:h-[92vh] overflow-hidden bg-[var(--bg-primary)]">
+    <div className="relative w-full h-[85vh] md:h-[94vh] overflow-hidden bg-[var(--bg-primary)]">
       {/* ─── Background Slides ─── */}
       {heroItems.map((slide, idx) => {
         const bannerSrc = proxyImage(slide.bannerUrl || slide.posterUrl || "");
@@ -110,9 +110,9 @@ export default function HeroSection({ items }: HeroSectionProps) {
 
       {/* ─── Foreground Content ─── */}
       <div className="absolute inset-0 z-[3] flex items-end">
-        <div className="w-full max-w-[1600px] mx-auto px-5 md:px-10 lg:px-14 pb-14 md:pb-20 flex items-end justify-between gap-8">
+        <div className="w-full max-w-[1600px] mx-auto px-5 md:px-8 lg:px-16 pb-16 md:pb-24 flex items-end justify-between gap-8">
           {/* Left: Featured details */}
-          <div className="max-w-2xl animate-fade-in-up" key={item.id}>
+          <div className="max-w-[640px] animate-fade-in-up" key={item.id}>
             {/* Badges */}
             <div className="flex flex-wrap items-center gap-2.5 mb-4">
               <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-primary)]">
@@ -123,7 +123,7 @@ export default function HeroSection({ items }: HeroSectionProps) {
 
             {/* Title */}
             <h1
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-4 leading-[1.02] tracking-tight text-white drop-shadow-[0_4px_30px_rgba(0,0,0,0.8)]"
+              className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-extrabold mb-4 leading-[1.0] tracking-tight text-white drop-shadow-[0_4px_30px_rgba(0,0,0,0.85)] line-clamp-2"
               style={{ fontFamily: "var(--font-space)" }}
             >
               {item.title}
@@ -162,22 +162,22 @@ export default function HeroSection({ items }: HeroSectionProps) {
               {item.synopsis}
             </p>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-wrap items-center gap-3">
+            {/* CTA Buttons — large & cinematic (56px) */}
+            <div className="flex flex-wrap items-center gap-3.5">
               <Link
                 href={`/watch/${item.type}/${item.id}`}
-                className="whitespace-nowrap bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-black font-bold text-sm md:text-base px-6 md:px-8 py-3 rounded-full inline-flex items-center gap-2 transition-all shadow-[0_0_24px_var(--accent-glow)] hover:shadow-[0_0_36px_var(--accent-glow)] hover:scale-[1.03] active:scale-[0.98]"
+                className="whitespace-nowrap h-14 bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-black font-bold text-base md:text-lg px-8 md:px-10 rounded-full inline-flex items-center gap-2.5 transition-all shadow-[0_0_28px_var(--accent-glow)] hover:shadow-[0_0_44px_var(--accent-glow)] hover:scale-[1.03] active:scale-[0.98]"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                   <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
                 Play Now
               </Link>
               <Link
                 href={`/details/${item.type}/${item.id}`}
-                className="whitespace-nowrap border border-white/15 hover:border-white/30 text-white font-semibold text-sm md:text-base px-6 py-3 rounded-full inline-flex items-center gap-2 transition-all bg-white/5 backdrop-blur-md hover:bg-white/10"
+                className="whitespace-nowrap h-14 border border-white/20 hover:border-white/40 text-white font-semibold text-base md:text-lg px-8 rounded-full inline-flex items-center gap-2.5 transition-all bg-white/5 backdrop-blur-md hover:bg-white/10"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 16v-4" />
                   <path d="M12 8h.01" />
@@ -187,11 +187,18 @@ export default function HeroSection({ items }: HeroSectionProps) {
             </div>
           </div>
 
-          {/* Right: "Up Next" poster strip (desktop) */}
-          <div className="hidden lg:flex flex-col items-end gap-4 pb-1">
-            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-              Up Next
-            </span>
+          {/* Right: "Up Next" floating glass panel (desktop) */}
+          <div className="hidden lg:block glass-panel rounded-2xl p-4 pb-3 shadow-[0_8px_40px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between gap-6 mb-3 px-1">
+              <span className="text-xs font-bold uppercase tracking-[0.16em] text-white/90">
+                Up Next
+              </span>
+              <span className="text-xs font-mono text-[var(--text-muted)]">
+                <span className="text-[var(--accent-primary)] font-bold">{String(activeIndex + 1).padStart(2, "0")}</span>
+                <span className="mx-0.5">/</span>
+                {String(heroItems.length).padStart(2, "0")}
+              </span>
+            </div>
             <div className="flex gap-3">
               {heroItems.map((slide, i) => {
                 const posterSrc = proxyImage(slide.posterUrl || slide.bannerUrl || "");
@@ -201,10 +208,10 @@ export default function HeroSection({ items }: HeroSectionProps) {
                     key={slide.id}
                     onClick={() => goToSlide(i)}
                     aria-label={`Show ${slide.title}`}
-                    className={`relative w-16 h-24 rounded-lg overflow-hidden transition-all duration-300 ${
+                    className={`relative w-[68px] h-[102px] rounded-lg overflow-hidden transition-all duration-300 ${
                       active
-                        ? "ring-2 ring-[var(--accent-primary)] shadow-[0_0_18px_var(--accent-glow)] scale-105"
-                        : "ring-1 ring-white/10 opacity-60 hover:opacity-100 hover:scale-105"
+                        ? "ring-2 ring-[var(--accent-primary)] shadow-[0_0_18px_var(--accent-glow)] scale-[1.04]"
+                        : "ring-1 ring-white/10 opacity-55 hover:opacity-100 hover:scale-[1.04]"
                     }`}
                   >
                     {posterSrc ? (
@@ -212,6 +219,10 @@ export default function HeroSection({ items }: HeroSectionProps) {
                       <img src={posterSrc} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       <div className="w-full h-full bg-[var(--bg-card)]" />
+                    )}
+                    {/* active progress bar (auto-advance timer cue) */}
+                    {active && (
+                      <span className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--accent-primary)] shadow-[0_0_8px_var(--accent-glow)]" />
                     )}
                   </button>
                 );

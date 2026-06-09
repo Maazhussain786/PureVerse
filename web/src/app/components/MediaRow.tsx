@@ -59,13 +59,13 @@ export default function MediaRow({ title, items, viewAllHref, icon, ranked, layo
   if (!items || items.length === 0) return null;
 
   return (
-    <section className="mb-14 md:mb-16">
+    <section style={{ marginBottom: "var(--space-section)" }}>
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-4 px-1">
+      <div className="flex items-center justify-between px-1" style={{ marginBottom: "var(--space-title-to-content)" }}>
         <div className="flex items-center gap-3">
-          {icon || <div className="w-1 h-6 rounded-full bg-[var(--accent-primary)]" />}
+          {icon || <div className="w-1.5 h-7 rounded-full bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)]" />}
           <h2
-            className="text-xl md:text-2xl font-bold text-white"
+            className="text-xl md:text-[28px] font-bold text-white tracking-tight"
             style={{ fontFamily: "var(--font-space)" }}
           >
             {title}
@@ -75,9 +75,12 @@ export default function MediaRow({ title, items, viewAllHref, icon, ranked, layo
           {viewAllHref && (
             <a
               href={viewAllHref}
-              className="text-xs text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors mr-2 font-medium"
+              className="group/all flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors mr-2"
             >
-              View All →
+              View All
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover/all:translate-x-0.5">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
             </a>
           )}
           {/* Scroll Arrows */}
@@ -118,7 +121,7 @@ export default function MediaRow({ title, items, viewAllHref, icon, ranked, layo
         {canScrollRight && <div className="row-fade-right" />}
         <div
           ref={scrollRef}
-          className="flex gap-4 md:gap-5 overflow-x-auto pt-3 pb-4 hide-scrollbar scroll-smooth"
+          className="row-scroller flex gap-5 md:gap-6 overflow-x-auto overflow-y-visible hide-scrollbar scroll-smooth"
         >
           {items.map((item, index) => (
             <MediaCard
