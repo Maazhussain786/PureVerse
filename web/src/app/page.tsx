@@ -102,6 +102,18 @@ const icons = {
       </svg>
     </div>
   ),
+  trophy: (
+    <div className="w-7 h-7 rounded-lg bg-[var(--accent-subtle)] flex items-center justify-center">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+        <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+        <path d="M4 22h16" />
+        <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+        <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+        <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+      </svg>
+    </div>
+  ),
 };
 
 export default function Home() {
@@ -125,8 +137,8 @@ export default function Home() {
         <HeroSkeleton />
       )}
 
-      {/* Content Rows — Full Width, Netflix-style */}
-      <div className="relative z-10 -mt-8 px-4 md:px-8 max-w-[1600px] mx-auto flex flex-col gap-2">
+      {/* Content Rows — Full Width, cinematic overlap with hero */}
+      <div className="relative z-10 -mt-20 md:-mt-28 px-4 md:px-10 lg:px-14 max-w-[1600px] mx-auto flex flex-col gap-2">
 
         {/* Continue Watching (real user data) */}
         {continueWatching.length > 0 && (
@@ -151,15 +163,27 @@ export default function Home() {
           />
         )}
 
+        {/* Top 10 Today (ranked landscape row) */}
+        {!loadingTrending && trendingAll.length >= 3 ? (
+          <MediaRow
+            title="Top 10 Today"
+            items={trendingAll.slice(0, 10)}
+            icon={icons.trophy}
+            ranked
+            layout="landscape"
+          />
+        ) : null}
+
         {/* Trending Now */}
         {!loadingTrending && trendingAll.length > 1 ? (
           <MediaRow
             title="Trending Now"
             items={trendingAll.slice(1, 20)}
             icon={icons.fire}
+            layout="landscape"
           />
         ) : loadingTrending ? (
-          <MediaRowSkeleton />
+          <MediaRowSkeleton landscape />
         ) : null}
 
         {/* Popular Movies */}
@@ -169,9 +193,10 @@ export default function Home() {
             items={trendingMovies}
             viewAllHref="/movies"
             icon={icons.movie}
+            layout="landscape"
           />
         ) : loadingMovies ? (
-          <MediaRowSkeleton />
+          <MediaRowSkeleton landscape />
         ) : null}
 
         {/* Top Rated Series */}
@@ -181,9 +206,10 @@ export default function Home() {
             items={topRatedSeries}
             viewAllHref="/series"
             icon={icons.star}
+            layout="landscape"
           />
         ) : loadingTopSeries ? (
-          <MediaRowSkeleton />
+          <MediaRowSkeleton landscape />
         ) : null}
 
         {/* Trending Anime */}
@@ -193,9 +219,10 @@ export default function Home() {
             items={trendingAnime}
             viewAllHref="/anime"
             icon={icons.anime}
+            layout="landscape"
           />
         ) : loadingAnime ? (
-          <MediaRowSkeleton />
+          <MediaRowSkeleton landscape />
         ) : null}
 
         {/* Now In Theatres */}
@@ -204,9 +231,10 @@ export default function Home() {
             title="Now In Theatres"
             items={nowPlaying}
             icon={icons.sparkle}
+            layout="landscape"
           />
         ) : loadingNowPlaying ? (
-          <MediaRowSkeleton />
+          <MediaRowSkeleton landscape />
         ) : null}
 
         {/* Popular Series */}
@@ -216,9 +244,10 @@ export default function Home() {
             items={trendingSeries}
             viewAllHref="/series"
             icon={icons.tv}
+            layout="landscape"
           />
         ) : loadingSeries ? (
-          <MediaRowSkeleton />
+          <MediaRowSkeleton landscape />
         ) : null}
 
         {/* Top Rated Movies */}
@@ -228,9 +257,10 @@ export default function Home() {
             items={topRatedMovies}
             viewAllHref="/movies"
             icon={icons.star}
+            layout="landscape"
           />
         ) : loadingTopMovies ? (
-          <MediaRowSkeleton />
+          <MediaRowSkeleton landscape />
         ) : null}
 
         {/* Popular Anime */}
@@ -240,9 +270,10 @@ export default function Home() {
             items={popularAnime}
             viewAllHref="/anime"
             icon={icons.anime}
+            layout="landscape"
           />
         ) : loadingPopularAnime ? (
-          <MediaRowSkeleton />
+          <MediaRowSkeleton landscape />
         ) : null}
 
         {/* Footer */}

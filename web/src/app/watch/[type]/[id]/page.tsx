@@ -68,18 +68,14 @@ export default function WatchPage() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [pingStatus, setPingStatus] = useState("");
 
-  // Health check a mirror URL to bypass local ISP blocks
-  const checkMirrorHealth = async (url: string) => {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
-      await fetch(url, { mode: 'no-cors', signal: controller.signal });
-      clearTimeout(timeoutId);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  };
+  // Cycle to the next available server. Used by the manual "Switch Server"
+  // control when a provider iframe is blank/blocked (e.g. ISP/region block),
+  // which does NOT fire an iframe error for cross-origin content.
+  const sourceCount = streamData?.sources?.length ?? 0;
+  const tryNextServer = useCallback(() => {
+    if (sourceCount === 0) return;
+    setActiveSourceIdx((idx) => (idx + 1) % sourceCount);
+  }, [sourceCount]);
 
   // ─── Fetch Stream Data ───
   // We fetch standard embeds from our backend for all media types (Movies, TV, Anime).
@@ -267,16 +263,45 @@ export default function WatchPage() {
 
           {/* ─── Active Player Rendering ─── */}
           {!loading && !error && streamData && activeSource && (
-            <iframe
-              key={activeSource.url}
-              src={activeSource.url}
-              className="w-full h-full border-none"
-              allowFullScreen
-              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-              referrerPolicy="origin"
-            />
+            <>
+              <iframe
+                key={activeSource.url}
+                src={activeSource.url}
+                className="w-full h-full border-none"
+                allowFullScreen
+                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                referrerPolicy="origin"
+              />
+
+              {/* Always-visible recovery control. A region/ISP-blocked iframe
+                  renders blank WITHOUT firing onError, so we cannot rely on the
+                  error state — the user must always be able to jump servers. */}
+              {streamData.sources.length > 1 && (
+                <button
+                  onClick={tryNextServer}
+                  title="If the video is blank or won't play, switch to another server"
+                  className="absolute top-3 right-3 z-10 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-black/60 backdrop-blur-md border border-[var(--accent-primary)]/40 hover:bg-[var(--accent-primary)] hover:text-black transition-all duration-300 shadow-[0_0_15px_var(--accent-glow)]"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 2v6h6" />
+                    <path d="M21 12A9 9 0 0 0 6 5.3L3 8" />
+                    <path d="M21 22v-6h-6" />
+                    <path d="M3 12a9 9 0 0 0 15 6.7l3-2.7" />
+                  </svg>
+                  Switch Server
+                </button>
+              )}
+            </>
           )}
         </div>
+
+        {/* Helper hint so users know what to do when a provider is blocked */}
+        {!loading && !error && streamData && streamData.sources.length > 1 && (
+          <p className="mt-2 text-xs text-[var(--text-muted)] text-center">
+            Video blank or stuck loading? It may be blocked in your region —
+            tap <span className="text-[var(--accent-primary)] font-semibold">Switch Server</span> or pick another server below.
+          </p>
+        )}
 
         {/* ─── Content Info Bar ─── */}
         <div className="mt-5 glass-panel rounded-xl p-5 md:p-6">
