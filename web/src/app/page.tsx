@@ -137,8 +137,11 @@ export default function Home() {
         <HeroSkeleton />
       )}
 
-      {/* Content Rows — Full Width, cinematic overlap with hero */}
-      <div className="relative z-10 -mt-20 md:-mt-28 px-4 md:px-10 lg:px-14 max-w-[1600px] mx-auto flex flex-col gap-2">
+      {/* Content Rows — premium OTT spacing (96px from hero, 64/32/20 padding) */}
+      <div
+        className="relative z-10 px-5 md:px-8 lg:px-16 max-w-[1600px] mx-auto"
+        style={{ paddingTop: "var(--space-hero-to-section)" }}
+      >
 
         {/* Continue Watching (real user data) */}
         {continueWatching.length > 0 && (
@@ -163,17 +166,6 @@ export default function Home() {
           />
         )}
 
-        {/* Top 10 Today (ranked landscape row) */}
-        {!loadingTrending && trendingAll.length >= 3 ? (
-          <MediaRow
-            title="Top 10 Today"
-            items={trendingAll.slice(0, 10)}
-            icon={icons.trophy}
-            ranked
-            layout="landscape"
-          />
-        ) : null}
-
         {/* Trending Now */}
         {!loadingTrending && trendingAll.length > 1 ? (
           <MediaRow
@@ -186,7 +178,18 @@ export default function Home() {
           <MediaRowSkeleton landscape />
         ) : null}
 
-        {/* Popular Movies */}
+        {/* Top 10 Today (ranked landscape row) */}
+        {!loadingTrending && trendingAll.length >= 3 ? (
+          <MediaRow
+            title="Top 10 Today"
+            items={trendingAll.slice(0, 10)}
+            icon={icons.trophy}
+            ranked
+            layout="landscape"
+          />
+        ) : null}
+
+        {/* Popular Movies — cinematic wide cards */}
         {!loadingMovies && trendingMovies.length > 0 ? (
           <MediaRow
             title="Popular Movies"
@@ -196,44 +199,6 @@ export default function Home() {
             layout="landscape"
           />
         ) : loadingMovies ? (
-          <MediaRowSkeleton landscape />
-        ) : null}
-
-        {/* Top Rated Series */}
-        {!loadingTopSeries && topRatedSeries.length > 0 ? (
-          <MediaRow
-            title="Top Rated Series"
-            items={topRatedSeries}
-            viewAllHref="/series"
-            icon={icons.star}
-            layout="landscape"
-          />
-        ) : loadingTopSeries ? (
-          <MediaRowSkeleton landscape />
-        ) : null}
-
-        {/* Trending Anime */}
-        {!loadingAnime && trendingAnime.length > 0 ? (
-          <MediaRow
-            title="Trending Anime"
-            items={trendingAnime}
-            viewAllHref="/anime"
-            icon={icons.anime}
-            layout="landscape"
-          />
-        ) : loadingAnime ? (
-          <MediaRowSkeleton landscape />
-        ) : null}
-
-        {/* Now In Theatres */}
-        {!loadingNowPlaying && nowPlaying.length > 0 ? (
-          <MediaRow
-            title="Now In Theatres"
-            items={nowPlaying}
-            icon={icons.sparkle}
-            layout="landscape"
-          />
-        ) : loadingNowPlaying ? (
           <MediaRowSkeleton landscape />
         ) : null}
 
@@ -250,6 +215,43 @@ export default function Home() {
           <MediaRowSkeleton landscape />
         ) : null}
 
+        {/* Top Anime — poster cards */}
+        {!loadingAnime && trendingAnime.length > 0 ? (
+          <MediaRow
+            title="Top Anime"
+            items={trendingAnime}
+            viewAllHref="/anime"
+            icon={icons.anime}
+          />
+        ) : loadingAnime ? (
+          <MediaRowSkeleton />
+        ) : null}
+
+        {/* New Releases */}
+        {!loadingNowPlaying && nowPlaying.length > 0 ? (
+          <MediaRow
+            title="New Releases"
+            items={nowPlaying}
+            icon={icons.sparkle}
+            layout="landscape"
+          />
+        ) : loadingNowPlaying ? (
+          <MediaRowSkeleton landscape />
+        ) : null}
+
+        {/* Top Rated Series */}
+        {!loadingTopSeries && topRatedSeries.length > 0 ? (
+          <MediaRow
+            title="Top Rated Series"
+            items={topRatedSeries}
+            viewAllHref="/series"
+            icon={icons.star}
+            layout="landscape"
+          />
+        ) : loadingTopSeries ? (
+          <MediaRowSkeleton landscape />
+        ) : null}
+
         {/* Top Rated Movies */}
         {!loadingTopMovies && topRatedMovies.length > 0 ? (
           <MediaRow
@@ -263,17 +265,16 @@ export default function Home() {
           <MediaRowSkeleton landscape />
         ) : null}
 
-        {/* Popular Anime */}
+        {/* Popular Anime — poster cards */}
         {!loadingPopularAnime && popularAnime.length > 0 ? (
           <MediaRow
             title="Popular Anime"
             items={popularAnime}
             viewAllHref="/anime"
             icon={icons.anime}
-            layout="landscape"
           />
         ) : loadingPopularAnime ? (
-          <MediaRowSkeleton landscape />
+          <MediaRowSkeleton />
         ) : null}
 
         {/* Footer */}

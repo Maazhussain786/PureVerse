@@ -292,18 +292,37 @@ body {
 }
 
 /* ─── Media Card Hover Effect ─── */
+/* position+z-index ensures a hovered card lifts ABOVE neighbours and the
+   row's gradient fade edges instead of being clipped behind them. */
 .media-card {
+  position: relative;
+  z-index: 1;
   transition: transform var(--transition-smooth), box-shadow var(--transition-smooth);
 }
 .media-card:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: var(--shadow-hover);
+  transform: translateY(-10px) scale(1.08);
+  z-index: 30;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.75);
 }
 .media-card:hover .media-card-image {
-  transform: scale(1.08);
+  transform: scale(1.05);
 }
 .media-card-image {
   transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Premium Spacing System (OTT rhythm) ─── */
+:root {
+  --space-hero-to-section: 96px;
+  --space-section: 72px;
+  --space-title-to-content: 24px;
+}
+/* Horizontal row scroller: generous vertical padding so the 1.08 hover scale
+   is never clipped by the overflow-x container (overflow-y becomes auto when
+   overflow-x is auto, so we reserve room with padding instead). */
+.row-scroller {
+  padding-top: 26px;
+  padding-bottom: 30px;
 }
 
 /* ─── Progress Bar (Continue Watching) ─── */
