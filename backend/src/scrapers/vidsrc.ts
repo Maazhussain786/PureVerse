@@ -2,10 +2,23 @@ import { StreamPayload } from '../models/media';
 import { getAnimeDetails } from '../services/animeService';
 import { searchTmdb } from '../services/metadataService';
 
+type Source = {
+  server: string;
+  quality: string;
+  url: string;
+  type: 'embed';
+};
+
 /**
  * Generates embed URLs from multiple working providers.
- * The frontend renders these in an iframe.
- * Providers are ordered by reliability and UI/UX quality — best first.
+ * The frontend renders these in an iframe and exposes a Server Selector
+ * so the user can fall back if one provider is blocked or has no source.
+ *
+ * IMPORTANT: Providers are validated periodically. Dead domains (embed.su,
+ * vidsrc.net, autoembed.cc, vidbinge.dev, smashy.stream) were removed in
+ * 2026-06 after they started returning empty/blocked responses, which was
+ * the root cause of the "anime stream unavailable" problem — the default
+ * server was simply dead. Keep the most reliable provider FIRST.
  */
 export async function resolveVidSrcStream(
   type: string,
@@ -14,91 +27,81 @@ export async function resolveVidSrcStream(
   episode?: string
 ): Promise<StreamPayload> {
   const rawId = id.replace('tmdb_', '').replace('mal_', '');
-  const sources = [];
+  const sources: Source[] = [];
 
   if (type === 'movie') {
+    // ── MOVIE servers (film/TV catalogue providers — kept separate from anime) ──
     sources.push(
-      {
-        server: 'Embed.su (Multi-Audio/Subs)',
-        quality: 'Auto',
-        url: `https://embed.su/embed/movie/${rawId}`,
-        type: 'embed' as const,
-      },
-      {
-        server: 'VidLink (Best UI)',
-        quality: 'Auto',
-        url: `https://vidlink.pro/movie/${rawId}`,
-        type: 'embed' as const,
-      },
-      {
-        server: 'VidBinge (Ad-Free)',
-        quality: 'Auto',
-        url: `https://vidbinge.dev/embed/movie/${rawId}`,
-        type: 'embed' as const,
-      },
       {
         server: 'VidSrc',
         quality: 'Auto',
-        url: `https://vidsrc.net/embed/movie?tmdb=${rawId}`,
-        type: 'embed' as const,
+        url: `https://vidsrc.to/embed/movie/${rawId}`,
+        type: 'embed',
       },
       {
-        server: 'SmashyStream',
+        server: 'VidLink',
         quality: 'Auto',
-        url: `https://player.smashy.stream/movie/${rawId}`,
-        type: 'embed' as const,
+        url: `https://vidlink.pro/movie/${rawId}`,
+        type: 'embed',
       },
       {
         server: '2Embed',
         quality: 'Auto',
         url: `https://www.2embed.cc/embed/${rawId}`,
-        type: 'embed' as const,
+        type: 'embed',
+      },
+      {
+        server: 'MultiEmbed',
+        quality: 'Auto',
+        url: `https://multiembed.mov/?video_id=${rawId}&tmdb=1`,
+        type: 'embed',
+      },
+      {
+        server: 'VidFast',
+        quality: 'Auto',
+        url: `https://vidfast.pro/movie/${rawId}?autoPlay=true`,
+        type: 'embed',
       }
     );
   } else if (type === 'tv') {
+    // ── TV servers (film/TV catalogue providers — kept separate from anime) ──
     const s = season || '1';
     const e = episode || '1';
     sources.push(
       {
-        server: 'Embed.su (Multi-Audio/Subs)',
-        quality: 'Auto',
-        url: `https://embed.su/embed/tv/${rawId}/${s}/${e}`,
-        type: 'embed' as const,
-      },
-      {
-        server: 'VidLink (Best UI)',
-        quality: 'Auto',
-        url: `https://vidlink.pro/tv/${rawId}/${s}/${e}`,
-        type: 'embed' as const,
-      },
-      {
-        server: 'VidBinge (Ad-Free)',
-        quality: 'Auto',
-        url: `https://vidbinge.dev/embed/tv/${rawId}/${s}/${e}`,
-        type: 'embed' as const,
-      },
-      {
         server: 'VidSrc',
         quality: 'Auto',
-        url: `https://vidsrc.net/embed/tv?tmdb=${rawId}&season=${s}&episode=${e}`,
-        type: 'embed' as const,
+        url: `https://vidsrc.to/embed/tv/${rawId}/${s}/${e}`,
+        type: 'embed',
       },
       {
-        server: 'SmashyStream',
+        server: 'VidLink',
         quality: 'Auto',
-        url: `https://player.smashy.stream/tv/${rawId}?s=${s}&e=${e}`,
-        type: 'embed' as const,
+        url: `https://vidlink.pro/tv/${rawId}/${s}/${e}`,
+        type: 'embed',
       },
       {
         server: '2Embed',
         quality: 'Auto',
         url: `https://www.2embed.cc/embedtv/${rawId}&s=${s}&e=${e}`,
-        type: 'embed' as const,
+        type: 'embed',
+      },
+      {
+        server: 'MultiEmbed',
+        quality: 'Auto',
+        url: `https://multiembed.mov/?video_id=${rawId}&tmdb=1&s=${s}&e=${e}`,
+        type: 'embed',
+      },
+      {
+        server: 'VidFast',
+        quality: 'Auto',
+        url: `https://vidfast.pro/tv/${rawId}/${s}/${e}?autoPlay=true`,
+        type: 'embed',
       }
     );
   } else if (type === 'anime') {
     let tmdbId = rawId;
-    
+
     // Only map if it's a MAL ID. If it's from TMDB, we already have the TMDB ID.
     if (id.startsWith('mal_')) {
       try {
@@ -118,37 +121,36 @@ export async function resolveVidSrcStream(
     if (tmdbId) {
       const s = season || '1';
       const e = episode || '1';
-      
+
+      // ── ANIME servers (kept SEPARATE from movie/TV) ──
+      // Anime is mapped onto a TMDB TV id, so these are the providers that
+      // carry anime under their /tv/ endpoint with built-in sub/dub switching.
+      // NOTE: a dedicated HiAnime/Vidstream-style player keys off AniList/MAL
+      // ids (not TMDB) and needs a mapping layer — tracked as a follow-up.
       sources.push(
         {
-          server: 'Embed.su (Dub/Sub)',
-          quality: 'Auto',
-          url: `https://embed.su/embed/tv/${tmdbId}/${s}/${e}`,
-          type: 'embed' as const,
-        },
-        {
-          server: 'AutoEmbed (Dub/Sub)',
-          quality: 'Auto',
-          url: `https://player.autoembed.cc/embed/tv/${tmdbId}/${s}/${e}`,
-          type: 'embed' as const,
-        },
-        {
-          server: 'VidLink (Best UI)',
+          server: 'VidLink (Sub/Dub)',
           quality: 'Auto',
           url: `https://vidlink.pro/tv/${tmdbId}/${s}/${e}`,
-          type: 'embed' as const,
+          type: 'embed',
         },
         {
-          server: 'VidBinge (Ad-Free)',
+          server: '2Embed (Sub)',
           quality: 'Auto',
-          url: `https://vidbinge.dev/embed/tv/${tmdbId}/${s}/${e}`,
-          type: 'embed' as const,
+          url: `https://www.2embed.cc/embedtv/${tmdbId}&s=${s}&e=${e}`,
+          type: 'embed',
         },
         {
-          server: 'VidSrc',
+          server: 'VidSrc (Sub/Dub)',
           quality: 'Auto',
-          url: `https://vidsrc.net/embed/tv?tmdb=${tmdbId}&season=${s}&episode=${e}`,
-          type: 'embed' as const,
+          url: `https://vidsrc.to/embed/tv/${tmdbId}/${s}/${e}`,
+          type: 'embed',
+        },
+        {
+          server: 'MultiEmbed',
+          quality: 'Auto',
+          url: `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${s}&e=${e}`,
+          type: 'embed',
         }
       );
     }

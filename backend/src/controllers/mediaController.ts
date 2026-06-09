@@ -251,7 +251,7 @@ export const getAnikotoRecent = async (req: Request, res: Response) => {
 
 export const getAnikotoSeries = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id;
+    const id = req.params.id as string;
     const data = await getAnimeSeries(id);
     res.json({ success: true, data });
   } catch (error: any) {
