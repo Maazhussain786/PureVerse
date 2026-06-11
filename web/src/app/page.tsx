@@ -3,11 +3,18 @@
 import React from "react";
 import HeroSection from "./components/HeroSection";
 import MediaRow from "./components/MediaRow";
+import AnimeSpotlight from "./components/AnimeSpotlight";
 import { useUserState } from "./components/UserStateContext";
 import { HeroSkeleton, MediaRowSkeleton } from "./components/Skeletons";
 import Link from "next/link";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+// Genres for the discovery strip — each links to real search results.
+const GENRES = [
+  "Action", "Adventure", "Comedy", "Drama", "Fantasy", "Sci-Fi",
+  "Romance", "Thriller", "Horror", "Mystery", "Animation", "Crime",
+];
 
 // Client-side data fetcher
 function useApiData(endpoint: string) {
@@ -31,6 +38,28 @@ function useApiData(endpoint: string) {
   }, [endpoint]);
 
   return { data, loading };
+}
+
+// Personalized "More Like This" — seeded from the user's most recent activity,
+// using the real per-title recommendations endpoint (no fake data).
+function usePersonalizedRecs(seedId?: string, seedType?: string) {
+  const [data, setData] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (!seedId || !seedType) { setData([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/media/recommendations/${seedType}/${seedId}`);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!cancelled) setData(json.data || []);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [seedId, seedType]);
+
+  return data;
 }
 
 // Section icons
@@ -117,7 +146,7 @@ const icons = {
 };
 
 export default function Home() {
-  const { continueWatching, watchlist } = useUserState();
+  const { continueWatching, watchlist, removeFromHistory } = useUserState();
 
   const { data: trendingAll, loading: loadingTrending } = useApiData("/trending");
   const { data: trendingMovies, loading: loadingMovies } = useApiData("/trending/movies");
@@ -127,6 +156,10 @@ export default function Home() {
   const { data: topRatedMovies, loading: loadingTopMovies } = useApiData("/top-rated/movies");
   const { data: topRatedSeries, loading: loadingTopSeries } = useApiData("/top-rated/series");
   const { data: nowPlaying, loading: loadingNowPlaying } = useApiData("/now-playing");
+
+  // Personalized recommendations seeded from the most recent user activity.
+  const recSeed = continueWatching[0] || watchlist[0];
+  const personalized = usePersonalizedRecs(recSeed?.id, recSeed?.type);
 
   return (
     <main className="min-h-screen">
@@ -139,11 +172,11 @@ export default function Home() {
 
       {/* Content Rows — premium OTT spacing (96px from hero, 64/32/20 padding) */}
       <div
-        className="relative z-10 px-5 md:px-8 lg:px-16 max-w-[1600px] mx-auto"
+        className="relative z-10 px-5 md:px-8 lg:px-16 max-w-screen-2xl mx-auto"
         style={{ paddingTop: "var(--space-hero-to-section)" }}
       >
 
-        {/* Continue Watching (real user data) */}
+        {/* Continue Watching (real user data, resumes playback, X to remove) */}
         {continueWatching.length > 0 && (
           <MediaRow
             title="Continue Watching"
@@ -151,6 +184,11 @@ export default function Home() {
               ...item,
               progress: item.progress,
               episodeLabel: item.season && item.episode ? `S${item.season} E${item.episode}` : undefined,
+              href:
+                item.season && item.episode
+                  ? `/watch/${item.type}/${item.id}?season=${item.season}&episode=${item.episode}`
+                  : `/watch/${item.type}/${item.id}`,
+              onRemove: () => removeFromHistory(item.key),
             }))}
             icon={icons.clock}
           />
@@ -189,10 +227,10 @@ export default function Home() {
           />
         ) : null}
 
-        {/* Popular Movies — cinematic wide cards */}
+        {/* Trending Movies — cinematic wide cards */}
         {!loadingMovies && trendingMovies.length > 0 ? (
           <MediaRow
-            title="Popular Movies"
+            title="Trending Movies"
             items={trendingMovies}
             viewAllHref="/movies"
             icon={icons.movie}
@@ -202,10 +240,10 @@ export default function Home() {
           <MediaRowSkeleton landscape />
         ) : null}
 
-        {/* Popular Series */}
+        {/* Popular TV Series */}
         {!loadingSeries && trendingSeries.length > 0 ? (
           <MediaRow
-            title="Popular Series"
+            title="Popular TV Series"
             items={trendingSeries}
             viewAllHref="/series"
             icon={icons.tv}
@@ -215,11 +253,16 @@ export default function Home() {
           <MediaRowSkeleton landscape />
         ) : null}
 
+        {/* Anime Spotlight — cinematic feature band (real trending-anime data) */}
+        {!loadingAnime && trendingAnime.length > 0 && (
+          <AnimeSpotlight item={trendingAnime[0]} />
+        )}
+
         {/* Top Anime — poster cards */}
-        {!loadingAnime && trendingAnime.length > 0 ? (
+        {!loadingAnime && trendingAnime.length > 1 ? (
           <MediaRow
             title="Top Anime"
-            items={trendingAnime}
+            items={trendingAnime.slice(1)}
             viewAllHref="/anime"
             icon={icons.anime}
           />
@@ -238,6 +281,16 @@ export default function Home() {
         ) : loadingNowPlaying ? (
           <MediaRowSkeleton landscape />
         ) : null}
+
+        {/* Personalized — More Like <recent title> (real recommendations API) */}
+        {recSeed && personalized.length > 0 && (
+          <MediaRow
+            title={`More Like ${recSeed.title}`}
+            items={personalized}
+            icon={icons.sparkle}
+            layout="landscape"
+          />
+        )}
 
         {/* Top Rated Series */}
         {!loadingTopSeries && topRatedSeries.length > 0 ? (
@@ -276,6 +329,43 @@ export default function Home() {
         ) : loadingPopularAnime ? (
           <MediaRowSkeleton />
         ) : null}
+
+        {/* Browse by Genre — Search & Discovery */}
+        <section style={{ marginBottom: "var(--space-section)" }}>
+          <div className="flex items-center justify-between px-1" style={{ marginBottom: "var(--space-title-to-content)" }}>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-lg bg-[var(--accent-subtle)] flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                </svg>
+              </div>
+              <h2 className="text-xl md:text-[28px] font-bold text-white tracking-tight" style={{ fontFamily: "var(--font-space)" }}>
+                Browse by Genre
+              </h2>
+            </div>
+            <Link
+              href="/search"
+              className="group/all flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors mr-2"
+            >
+              Search all
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover/all:translate-x-0.5">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </Link>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {GENRES.map((g) => (
+              <Link
+                key={g}
+                href={`/search?q=${encodeURIComponent(g)}`}
+                className="px-5 py-2.5 rounded-full glass-panel text-sm font-semibold text-[var(--text-secondary)] hover:text-black hover:bg-[var(--accent-primary)] hover:shadow-[0_0_18px_var(--accent-glow)] transition-all duration-200"
+              >
+                {g}
+              </Link>
+            ))}
+          </div>
+        </section>
 
         {/* Footer */}
         <footer className="mt-12 mb-10 pt-8 border-t border-white/5">
