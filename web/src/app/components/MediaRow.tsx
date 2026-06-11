@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import MediaCard from "./MediaCard";
+import useDragScroll from "../hooks/useDragScroll";
 
 interface MediaItem {
   id: string;
@@ -13,6 +14,8 @@ interface MediaItem {
   releaseYear: number;
   progress?: number;
   episodeLabel?: string;
+  href?: string; // custom destination (e.g. resume playback)
+  onRemove?: () => void; // X button (continue watching / my list rows)
 }
 
 interface MediaRowProps {
@@ -30,6 +33,7 @@ export default function MediaRow({ title, items, viewAllHref, icon, ranked, layo
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  useDragScroll(scrollRef);
 
   const checkScroll = () => {
     if (!scrollRef.current) return;
@@ -59,7 +63,7 @@ export default function MediaRow({ title, items, viewAllHref, icon, ranked, layo
   if (!items || items.length === 0) return null;
 
   return (
-    <section style={{ marginBottom: "var(--space-section)" }}>
+    <section className="group/row" style={{ marginBottom: "var(--space-section)" }}>
       {/* Section Header */}
       <div className="flex items-center justify-between px-1" style={{ marginBottom: "var(--space-title-to-content)" }}>
         <div className="flex items-center gap-3">
@@ -71,57 +75,51 @@ export default function MediaRow({ title, items, viewAllHref, icon, ranked, layo
             {title}
           </h2>
         </div>
-        <div className="flex items-center gap-2">
-          {viewAllHref && (
-            <a
-              href={viewAllHref}
-              className="group/all flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors mr-2"
-            >
-              View All
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover/all:translate-x-0.5">
-                <path d="m9 18 6-6-6-6" />
-              </svg>
-            </a>
-          )}
-          {/* Scroll Arrows */}
-          <button
-            onClick={() => scroll("left")}
-            className={`w-8 h-8 rounded-full glass-panel flex items-center justify-center transition-all duration-200 ${
-              canScrollLeft
-                ? "text-[var(--text-secondary)] hover:text-white hover:bg-white/10"
-                : "text-[var(--text-muted)]/30 cursor-default opacity-30"
-            }`}
-            aria-label="Scroll left"
-            disabled={!canScrollLeft}
+        {viewAllHref && (
+          <a
+            href={viewAllHref}
+            className="group/all flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--accent-primary)] transition-colors mr-1"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-          </button>
-          <button
-            onClick={() => scroll("right")}
-            className={`w-8 h-8 rounded-full glass-panel flex items-center justify-center transition-all duration-200 ${
-              canScrollRight
-                ? "text-[var(--text-secondary)] hover:text-white hover:bg-white/10"
-                : "text-[var(--text-muted)]/30 cursor-default opacity-30"
-            }`}
-            aria-label="Scroll right"
-            disabled={!canScrollRight}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            View All
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover/all:translate-x-0.5">
               <path d="m9 18 6-6-6-6" />
             </svg>
-          </button>
-        </div>
+          </a>
+        )}
       </div>
 
       {/* Scrollable Row with Fade Edges */}
       <div className="relative">
         {canScrollLeft && <div className="row-fade-left" />}
         {canScrollRight && <div className="row-fade-right" />}
+
+        {/* Netflix-style full-height chevrons — fade in on row hover (desktop) */}
+        {canScrollLeft && (
+          <button
+            onClick={() => scroll("left")}
+            aria-label="Scroll left"
+            className="hidden md:flex absolute left-0 top-0 bottom-0 z-20 w-12 items-center justify-center bg-gradient-to-r from-[rgba(9,9,12,0.9)] via-[rgba(9,9,12,0.45)] to-transparent opacity-0 group-hover/row:opacity-100 transition-opacity duration-200"
+          >
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-lg transition-transform duration-200 hover:scale-125">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+        )}
+        {canScrollRight && (
+          <button
+            onClick={() => scroll("right")}
+            aria-label="Scroll right"
+            className="hidden md:flex absolute right-0 top-0 bottom-0 z-20 w-12 items-center justify-center bg-gradient-to-l from-[rgba(9,9,12,0.9)] via-[rgba(9,9,12,0.45)] to-transparent opacity-0 group-hover/row:opacity-100 transition-opacity duration-200"
+          >
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white drop-shadow-lg transition-transform duration-200 hover:scale-125">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
+        )}
+
         <div
           ref={scrollRef}
-          className="row-scroller flex gap-5 md:gap-6 overflow-x-auto overflow-y-visible hide-scrollbar scroll-smooth"
+          className="row-scroller drag-scroll flex gap-5 md:gap-7 overflow-x-auto overflow-y-visible hide-scrollbar scroll-smooth"
         >
           {items.map((item, index) => (
             <MediaCard
@@ -137,6 +135,8 @@ export default function MediaRow({ title, items, viewAllHref, icon, ranked, layo
               episodeLabel={item.episodeLabel}
               rank={ranked ? index + 1 : undefined}
               layout={layout}
+              href={item.href}
+              onRemove={item.onRemove}
             />
           ))}
         </div>

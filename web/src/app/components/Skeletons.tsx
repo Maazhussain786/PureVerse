@@ -24,8 +24,8 @@ export function HeroSkeleton() {
 
 export function MediaRowSkeleton({ count = 6, landscape = false }: { count?: number; landscape?: boolean }) {
   const widthClass = landscape
-    ? "w-[230px] sm:w-[280px] md:w-[320px]"
-    : "w-[140px] sm:w-[160px] md:w-[180px]";
+    ? "w-[260px] sm:w-[300px] md:w-[340px] lg:w-[360px]"
+    : "w-[150px] sm:w-[168px] md:w-[188px]";
   const aspectClass = landscape ? "aspect-video" : "aspect-[2/3]";
   return (
     <section className="mb-14 md:mb-16">

@@ -16,6 +16,7 @@ interface MediaCardProps {
   rank?: number; // 1-based rank badge (Top 10 rows)
   layout?: "portrait" | "landscape";
   onRemove?: () => void;
+  href?: string; // override destination (e.g. resume playback on /watch)
 }
 
 function ratingClass(rating: number): string {
@@ -53,16 +54,17 @@ export default function MediaCard({
   rank,
   layout = "portrait",
   onRemove,
+  href,
 }: MediaCardProps) {
-  const detailHref = `/details/${type}/${id}`;
+  const detailHref = href || `/details/${type}/${id}`;
   const isLandscape = layout === "landscape";
 
   // Landscape cards prefer the backdrop; fall back to poster if there's no banner.
   const imgSrc = proxyImage(isLandscape ? bannerUrl || posterUrl : posterUrl);
 
   const widthClass = isLandscape
-    ? "w-[230px] sm:w-[280px] md:w-[320px]"
-    : "w-[140px] sm:w-[160px] md:w-[180px]";
+    ? "w-[260px] sm:w-[300px] md:w-[340px] lg:w-[360px]"
+    : "w-[150px] sm:w-[168px] md:w-[188px]";
   const aspectClass = isLandscape ? "aspect-video" : "aspect-[2/3]";
 
   const removeButton = onRemove ? (
