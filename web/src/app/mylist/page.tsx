@@ -8,12 +8,16 @@ import Link from "next/link";
 type FilterType = "all" | "movie" | "tv" | "anime";
 
 export default function MyListPage() {
-  const { watchlist, removeFromWatchlist } = useUserState();
+  const { watchlist, removeFromWatchlist, favorites, removeFromFavorites } = useUserState();
   const [filter, setFilter] = useState<FilterType>("all");
+  const [list, setList] = useState<"watchlist" | "favorites">("watchlist");
+
+  const activeItems = list === "watchlist" ? watchlist : favorites;
+  const removeItem = list === "watchlist" ? removeFromWatchlist : removeFromFavorites;
 
   const filteredItems = filter === "all"
-    ? watchlist
-    : watchlist.filter((item) => item.type === filter);
+    ? activeItems
+    : activeItems.filter((item) => item.type === filter);
 
   const filters: { key: FilterType; label: string }[] = [
     { key: "all", label: "All" },
@@ -40,14 +44,37 @@ export default function MyListPage() {
           </h1>
         </div>
         <p className="text-[var(--text-secondary)] text-sm">
-          {watchlist.length > 0
-            ? `${watchlist.length} title${watchlist.length !== 1 ? "s" : ""} in your list`
-            : "Your watchlist is empty"}
+          {activeItems.length > 0
+            ? `${activeItems.length} title${activeItems.length !== 1 ? "s" : ""} in ${list === "watchlist" ? "your list" : "favorites"}`
+            : list === "watchlist" ? "Your watchlist is empty" : "No favorites yet"}
         </p>
       </div>
 
+      {/* List Switcher */}
+      <div className="flex rounded-full bg-white/5 border border-white/10 p-1 w-fit mb-6">
+        {([
+          { key: "watchlist", label: "My List" },
+          { key: "favorites", label: "Favorites" },
+        ] as const).map((opt) => (
+          <button
+            key={opt.key}
+            onClick={() => setList(opt.key)}
+            className={`px-5 py-2 rounded-full text-sm font-bold transition-all ${
+              list === opt.key
+                ? "bg-[var(--accent-primary)] text-black"
+                : "text-[var(--text-secondary)] hover:text-white"
+            }`}
+          >
+            {opt.label}
+            <span className="ml-2 text-[10px] opacity-70">
+              {opt.key === "watchlist" ? watchlist.length : favorites.length}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Filter Tabs */}
-      {watchlist.length > 0 && (
+      {activeItems.length > 0 && (
         <div className="flex gap-2 mb-8">
           {filters.map((f) => (
             <button
@@ -77,11 +104,11 @@ export default function MyListPage() {
               posterUrl={item.posterUrl}
               rating={item.rating}
               releaseYear={item.releaseYear}
-              onRemove={() => removeFromWatchlist(item.id)}
+              onRemove={() => removeItem(item.id)}
             />
           ))}
         </div>
-      ) : watchlist.length > 0 ? (
+      ) : activeItems.length > 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <p className="text-[var(--text-muted)] text-lg mb-2">
             No {filter === "all" ? "" : filter} titles match this filter
@@ -95,10 +122,12 @@ export default function MyListPage() {
             </svg>
           </div>
           <p className="text-[var(--text-muted)] text-lg mb-2">
-            Your watchlist is empty
+            {list === "watchlist" ? "Your watchlist is empty" : "No favorites yet"}
           </p>
           <p className="text-[var(--text-muted)] text-sm mb-6 max-w-md">
-            Start adding movies, series, and anime to your list by clicking the + button on any title.
+            {list === "watchlist"
+              ? "Start adding movies, series, and anime to your list by clicking the + button on any title."
+              : "Tap the heart on any title's watch page to keep your favorites here."}
           </p>
           <Link href="/" className="btn-primary text-sm px-6 py-2.5">
             Browse Content

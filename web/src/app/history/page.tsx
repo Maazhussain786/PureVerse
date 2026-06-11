@@ -28,7 +28,7 @@ function formatDate(timestamp: number): string {
 }
 
 export default function HistoryPage() {
-  const { watchHistory, clearHistory } = useUserState();
+  const { watchHistory, clearHistory, removeFromHistory } = useUserState();
 
   return (
     <main className="min-h-screen pt-24 px-6 md:px-10 lg:px-14 max-w-[1600px] mx-auto">
@@ -75,14 +75,28 @@ export default function HistoryPage() {
       {watchHistory.length > 0 ? (
         <div className="grid gap-3">
           {watchHistory.map((item, index) => (
+            <div
+              key={`${item.key}-${index}`}
+              className="relative group"
+            >
+              {/* Remove button — instant per-item delete */}
+              <button
+                onClick={() => removeFromHistory(item.key)}
+                className="absolute top-1/2 -translate-y-1/2 right-3 z-10 w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/80 flex items-center justify-center text-[var(--text-muted)] hover:text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
+                title="Remove from history"
+                aria-label={`Remove ${item.title} from history`}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
             <Link
-              key={`${item.id}-${item.season}-${item.episode}-${index}`}
               href={
                 item.season && item.episode
                   ? `/watch/${item.type}/${item.id}?season=${item.season}&episode=${item.episode}`
                   : `/watch/${item.type}/${item.id}`
               }
-              className="glass-panel glass-panel-hover rounded-xl p-4 flex gap-4 items-center group transition-all"
+              className="glass-panel glass-panel-hover rounded-xl p-4 pr-12 flex gap-4 items-center transition-all"
             >
               {/* Poster Thumbnail */}
               <div className="flex-shrink-0 w-[60px] md:w-[80px] aspect-[2/3] rounded-lg overflow-hidden bg-[var(--bg-card)] relative">
@@ -146,6 +160,7 @@ export default function HistoryPage() {
                 </div>
               </div>
             </Link>
+            </div>
           ))}
         </div>
       ) : (
