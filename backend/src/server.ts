@@ -7,6 +7,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import setupSockets from './sockets/roomCoordinator';
 import routes from './routes';
+import { startNotificationSweep } from './services/notificationService';
 
 const app = express();
 const server = http.createServer(app);
@@ -65,6 +66,9 @@ app.get('/api/proxy/image', async (req, res) => {
 
 // Setup Sockets
 setupSockets(io);
+
+// Background episode-release notification sweep
+startNotificationSweep();
 
 const PORT = process.env.PORT || 5000;
 
