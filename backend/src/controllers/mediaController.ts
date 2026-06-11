@@ -13,6 +13,9 @@ import {
   fetchTrendingAnimeTmdb,
   fetchPopularAnimeTmdb,
   searchAnimeTmdb,
+  fetchDiscover,
+  DiscoverCategory,
+  DiscoverSort,
 } from '../services/metadataService';
 import { getAnimeDetails } from '../services/animeService';
 import { resolveVidSrcStream } from '../scrapers/vidsrc';
@@ -105,7 +108,32 @@ export const getPopularAnime = async (req: Request, res: Response) => {
   }
 };
 
-// ─── Search (Combined) ───────────────────────────────────
+// ─── Discover (genre browsing, sorting, pagination) ──────
+export const discoverMedia = async (req: Request, res: Response) => {
+  try {
+    const category = req.params.category as string;
+    if (!['movies', 'series', 'anime'].includes(category)) {
+      res.status(400).json({ success: false, message: 'Invalid category' });
+      return;
+    }
+    const genreId = req.query.genre ? parseInt(req.query.genre as string, 10) : undefined;
+    const sortRaw = req.query.sort as string;
+    const sort: DiscoverSort = ['popular', 'top_rated', 'newest'].includes(sortRaw)
+      ? (sortRaw as DiscoverSort)
+      : 'popular';
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+
+    const data = await fetchDiscover(category as DiscoverCategory, { genreId, sort, page });
+    res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Discover error:', error?.message || error);
+    res.status(500).json({ success: false, message: 'Failed to discover media' });
+  }
+};
+
+// ─── Search (Combined, with filters) ─────────────────────
+// Query params: q (required), type (movie|tv|anime), genre (name),
+// yearFrom / yearTo, minRating, limit.
 export const searchMedia = async (req: Request, res: Response) => {
   try {
     const query = (req.query.q as string) || '';
@@ -121,12 +149,94 @@ export const searchMedia = async (req: Request, res: Response) => {
 
     const tmdb = tmdbResults.status === 'fulfilled' ? tmdbResults.value : [];
     const anime = animeResults.status === 'fulfilled' ? animeResults.value : [];
-    const combined = deduplicateItems([...tmdb, ...anime]);
+    let combined = deduplicateItems([...tmdb, ...anime]);
+
+    const type = (req.query.type as string) || '';
+    if (['movie', 'tv', 'anime'].includes(type)) {
+      combined = combined.filter((i: any) => i.type === type);
+    }
+
+    const genre = ((req.query.genre as string) || '').toLowerCase();
+    if (genre) {
+      combined = combined.filter((i: any) =>
+        (i.genres || []).some((g: string) => g.toLowerCase().includes(genre))
+      );
+    }
+
+    const yearFrom = parseInt(req.query.yearFrom as string, 10);
+    if (!isNaN(yearFrom)) {
+      combined = combined.filter((i: any) => i.releaseYear >= yearFrom);
+    }
+    const yearTo = parseInt(req.query.yearTo as string, 10);
+    if (!isNaN(yearTo)) {
+      combined = combined.filter((i: any) => i.releaseYear > 0 && i.releaseYear <= yearTo);
+    }
+
+    const minRating = parseFloat(req.query.minRating as string);
+    if (!isNaN(minRating) && minRating > 0) {
+      combined = combined.filter((i: any) => i.rating >= minRating);
+    }
+
+    const limit = parseInt(req.query.limit as string, 10);
+    if (!isNaN(limit) && limit > 0) {
+      combined = combined.slice(0, limit);
+    }
 
     res.json({ success: true, data: combined });
   } catch (error: any) {
     console.error('Search error:', error?.message || error);
     res.status(500).json({ success: false, message: 'Search failed' });
+  }
+};
+
+// ─── Search suggestions (top-8, lightweight payload) ─────
+export const searchSuggest = async (req: Request, res: Response) => {
+  try {
+    const query = (req.query.q as string) || '';
+    if (!query.trim()) {
+      res.json({ success: true, data: [] });
+      return;
+    }
+    const [tmdbResults, animeResults] = await Promise.allSettled([
+      searchTmdb(query),
+      searchAnimeTmdb(query),
+    ]);
+    const tmdb = tmdbResults.status === 'fulfilled' ? tmdbResults.value : [];
+    const anime = animeResults.status === 'fulfilled' ? animeResults.value : [];
+    const combined = deduplicateItems([...anime.slice(0, 3), ...tmdb]).slice(0, 8);
+    res.json({
+      success: true,
+      data: combined.map((i: any) => ({
+        id: i.id,
+        type: i.type,
+        title: i.title,
+        posterUrl: i.posterUrl,
+        releaseYear: i.releaseYear,
+        rating: i.rating,
+      })),
+    });
+  } catch (error: any) {
+    console.error('Suggest error:', error?.message || error);
+    res.status(500).json({ success: false, message: 'Suggest failed' });
+  }
+};
+
+// ─── Trending searches (chips on the search page) ────────
+export const searchTrending = async (_req: Request, res: Response) => {
+  try {
+    const items = await fetchTrendingAll();
+    res.json({
+      success: true,
+      data: items.slice(0, 12).map((i: any) => ({
+        id: i.id,
+        type: i.type,
+        title: i.title,
+        posterUrl: i.posterUrl,
+      })),
+    });
+  } catch (error: any) {
+    console.error('Trending searches error:', error?.message || error);
+    res.status(500).json({ success: false, message: 'Failed' });
   }
 };
 

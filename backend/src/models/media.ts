@@ -19,6 +19,7 @@ export interface UnifiedEpisodeItem {
   thumbnailUrl: string;
   airDate: string;
   synopsis: string;
+  runtime?: number; // minutes
 }
 
 export interface MediaDetails extends UnifiedMediaItem {
@@ -29,6 +30,15 @@ export interface MediaDetails extends UnifiedMediaItem {
   status?: string;
   totalSeasons?: number;
   totalEpisodes?: number;
+  // Extended metadata for the premium details page
+  originalTitle?: string;
+  tagline?: string;
+  voteCount?: number;
+  popularity?: number;
+  language?: string;        // human-readable, e.g. "Japanese"
+  studios?: string[];       // production companies / studios
+  ageRating?: string;       // certification, e.g. "TV-MA" / "PG-13"
+  releaseDate?: string;     // full ISO date
 }
 
 export interface StreamSource {
@@ -36,6 +46,9 @@ export interface StreamSource {
   quality: string;
   url: string; // embed URL or .m3u8 link
   type: 'embed' | 'direct';
+  // Audio category for grouped server pickers (anime SUB/DUB sections).
+  // 'multi' = provider has in-player audio switching.
+  category?: 'sub' | 'dub' | 'multi';
 }
 
 export interface Subtitle {

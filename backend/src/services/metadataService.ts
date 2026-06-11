@@ -17,8 +17,50 @@ const tmdbApi = axios.create({
   },
 });
 
+// Common ISO-639-1 → human-readable language names (fallback: uppercased code)
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: 'English', ja: 'Japanese', ko: 'Korean', zh: 'Chinese', fr: 'French',
+  es: 'Spanish', de: 'German', it: 'Italian', pt: 'Portuguese', ru: 'Russian',
+  hi: 'Hindi', ar: 'Arabic', th: 'Thai', tr: 'Turkish', id: 'Indonesian',
+};
+
+function languageName(code?: string): string | undefined {
+  if (!code) return undefined;
+  return LANGUAGE_NAMES[code] || code.toUpperCase();
+}
+
+// Extract the US (or first available) age certification from TMDB append data.
+function extractCertification(type: 'movie' | 'tv', data: any): string | undefined {
+  if (type === 'tv') {
+    const results = data.content_ratings?.results || [];
+    const us = results.find((r: any) => r.iso_3166_1 === 'US');
+    const pick = us || results[0];
+    return pick?.rating || undefined;
+  }
+  const results = data.release_dates?.results || [];
+  const us = results.find((r: any) => r.iso_3166_1 === 'US');
+  const pick = us || results[0];
+  const cert = (pick?.release_dates || []).map((d: any) => d.certification).find((c: string) => c);
+  return cert || undefined;
+}
+
+// Static TMDB genre-id → name map (movie + TV ids combined; list endpoints
+// only return genre_ids, full names only appear on detail responses).
+const TMDB_GENRE_NAMES: Record<number, string> = {
+  28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+  27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance',
+  878: 'Sci-Fi', 10770: 'TV Movie', 53: 'Thriller', 10752: 'War', 37: 'Western',
+  10759: 'Action & Adventure', 10762: 'Kids', 10763: 'News', 10764: 'Reality',
+  10765: 'Sci-Fi & Fantasy', 10766: 'Soap', 10767: 'Talk', 10768: 'War & Politics',
+};
+
 function mapTmdbToUnified(item: any): UnifiedMediaItem {
   const mediaType = item.media_type || (item.first_air_date ? 'tv' : 'movie');
+  const genres: string[] =
+    item.genres?.length
+      ? item.genres.map((g: any) => g.name)
+      : (item.genre_ids || []).map((id: number) => TMDB_GENRE_NAMES[id]).filter(Boolean);
   return {
     id: `tmdb_${item.id}`,
     type: mediaType === 'anime' ? 'anime' : (mediaType === 'tv' ? 'tv' : 'movie'),
@@ -34,7 +76,7 @@ function mapTmdbToUnified(item: any): UnifiedMediaItem {
     releaseYear: parseInt(
       (item.release_date || item.first_air_date || '0000').substring(0, 4)
     ),
-    genres: (item.genres || []).map((g: any) => g.name),
+    genres,
     synopsis: item.overview || '',
   };
 }
@@ -101,7 +143,7 @@ export async function getTmdbDetails(
   if (cached) return cached;
 
   const response = await tmdbApi.get(`/${type}/${tmdbId}`, {
-    params: { append_to_response: 'credits,videos' },
+    params: { append_to_response: 'credits,videos,content_ratings,release_dates' },
   });
 
   const data = response.data;
@@ -139,6 +181,7 @@ export async function getTmdbDetails(
           : '',
         airDate: ep.air_date || '',
         synopsis: ep.overview || '',
+        runtime: ep.runtime || undefined,
       }));
     } catch {
       // Season fetch failed, continue with empty episodes
@@ -171,6 +214,17 @@ export async function getTmdbDetails(
     status: data.status || undefined,
     totalSeasons: data.number_of_seasons || undefined,
     totalEpisodes: data.number_of_episodes || undefined,
+    originalTitle: data.original_title || data.original_name || undefined,
+    tagline: data.tagline || undefined,
+    voteCount: data.vote_count || undefined,
+    popularity: data.popularity || undefined,
+    language:
+      languageName(data.original_language) ||
+      data.spoken_languages?.[0]?.english_name ||
+      undefined,
+    studios: (data.production_companies || []).slice(0, 3).map((c: any) => c.name),
+    ageRating: extractCertification(type, data),
+    releaseDate: data.release_date || data.first_air_date || undefined,
   };
 
   cache.set(cacheKey, details, 3600); // 1 hour cache
@@ -306,6 +360,52 @@ export async function fetchPopularAnimeTmdb(): Promise<UnifiedMediaItem[]> {
   return results;
 }
 
+// ─── Discover (genre browsing + sorting + pagination) ─────
+export type DiscoverCategory = 'movies' | 'series' | 'anime';
+export type DiscoverSort = 'popular' | 'top_rated' | 'newest';
+
+export async function fetchDiscover(
+  category: DiscoverCategory,
+  opts: { genreId?: number; sort?: DiscoverSort; page?: number } = {}
+): Promise<UnifiedMediaItem[]> {
+  const { genreId, sort = 'popular', page = 1 } = opts;
+  const isMovie = category === 'movies';
+  const tmdbType = isMovie ? 'movie' : 'tv';
+
+  const cacheKey = `tmdb_discover_${category}_${genreId || 'all'}_${sort}_${page}`;
+  const cached = cache.get<UnifiedMediaItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const params: Record<string, any> = { page, include_adult: false };
+
+  if (sort === 'top_rated') {
+    params.sort_by = 'vote_average.desc';
+    // Require a sensible vote floor so obscure 10/10s don't dominate
+    params['vote_count.gte'] = isMovie ? 300 : 150;
+  } else if (sort === 'newest') {
+    params.sort_by = isMovie ? 'primary_release_date.desc' : 'first_air_date.desc';
+    params['vote_count.gte'] = 20;
+  } else {
+    params.sort_by = 'popularity.desc';
+  }
+
+  const genres: number[] = [];
+  if (category === 'anime') {
+    genres.push(16); // Animation
+    params.with_original_language = 'ja';
+  }
+  if (genreId && !genres.includes(genreId)) genres.push(genreId);
+  if (genres.length > 0) params.with_genres = genres.join(',');
+
+  const response = await tmdbApi.get(`/discover/${tmdbType}`, { params });
+  const mediaType = category === 'anime' ? 'anime' : tmdbType;
+  const results = response.data.results.map((item: any) =>
+    mapTmdbToUnified({ ...item, media_type: mediaType })
+  );
+  cache.set(cacheKey, results, 1800); // 30 min
+  return results;
+}
+
 export async function searchAnimeTmdb(query: string): Promise<UnifiedMediaItem[]> {
   const cacheKey = `tmdb_search_anime_${query}`;
   const cached = cache.get<UnifiedMediaItem[]>(cacheKey);
@@ -314,15 +414,60 @@ export async function searchAnimeTmdb(query: string): Promise<UnifiedMediaItem[]
   const response = await tmdbApi.get('/search/tv', {
     params: { query, include_adult: false },
   });
-  
+
   // Filter for Japanese Animation
   const results = response.data.results
-    .filter((item: any) => 
-      item.original_language === 'ja' && 
+    .filter((item: any) =>
+      item.original_language === 'ja' &&
       (item.genre_ids || []).includes(16)
     )
     .map((item: any) => mapTmdbToUnified({ ...item, media_type: 'anime' }));
-    
+
   cache.set(cacheKey, results, 600);
   return results;
+}
+
+// ─── Episode air info (notification generator) ────────────
+export interface TvAirInfo {
+  id: string;
+  name: string;
+  status?: string;
+  posterUrl: string;
+  lastEpisode?: { season: number; episode: number; name?: string; airDate?: string };
+  nextEpisode?: { season: number; episode: number; name?: string; airDate?: string };
+  lastSeasonNumber?: number;
+}
+
+export async function fetchTvAirInfo(rawId: string): Promise<TvAirInfo | null> {
+  const cacheKey = `tmdb_air_${rawId}`;
+  const cached = cache.get<TvAirInfo | null>(cacheKey);
+  if (cached !== undefined) return cached;
+
+  try {
+    const response = await tmdbApi.get(`/tv/${rawId}`);
+    const d = response.data;
+    const mapEp = (ep: any) =>
+      ep
+        ? {
+            season: ep.season_number,
+            episode: ep.episode_number,
+            name: ep.name,
+            airDate: ep.air_date,
+          }
+        : undefined;
+    const info: TvAirInfo = {
+      id: `tmdb_${d.id}`,
+      name: d.name || 'Untitled',
+      status: d.status,
+      posterUrl: d.poster_path ? `${TMDB_IMAGE_BASE}/w300${d.poster_path}` : '',
+      lastEpisode: mapEp(d.last_episode_to_air),
+      nextEpisode: mapEp(d.next_episode_to_air),
+      lastSeasonNumber: d.number_of_seasons,
+    };
+    cache.set(cacheKey, info, 1800); // 30 min
+    return info;
+  } catch {
+    cache.set(cacheKey, null, 1800);
+    return null;
+  }
 }

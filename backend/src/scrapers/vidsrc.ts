@@ -7,6 +7,7 @@ type Source = {
   quality: string;
   url: string;
   type: 'embed';
+  category?: 'sub' | 'dub' | 'multi';
 };
 
 /**
@@ -129,28 +130,32 @@ export async function resolveVidSrcStream(
       // ids (not TMDB) and needs a mapping layer — tracked as a follow-up.
       sources.push(
         {
-          server: 'VidLink (Sub/Dub)',
+          server: 'VidLink',
           quality: 'Auto',
           url: `https://vidlink.pro/tv/${tmdbId}/${s}/${e}`,
           type: 'embed',
+          category: 'multi',
         },
         {
-          server: '2Embed (Sub)',
+          server: '2Embed',
           quality: 'Auto',
           url: `https://www.2embed.cc/embedtv/${tmdbId}&s=${s}&e=${e}`,
           type: 'embed',
+          category: 'sub',
         },
         {
-          server: 'VidSrc (Sub/Dub)',
+          server: 'VidSrc',
           quality: 'Auto',
           url: `https://vidsrc.to/embed/tv/${tmdbId}/${s}/${e}`,
           type: 'embed',
+          category: 'multi',
         },
         {
           server: 'MultiEmbed',
           quality: 'Auto',
           url: `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${s}&e=${e}`,
           type: 'embed',
+          category: 'multi',
         }
       );
     }

@@ -179,6 +179,13 @@ export async function getAnimeDetails(malId: string): Promise<MediaDetails> {
     runtime: data.duration ? parseInt(data.duration) || undefined : undefined,
     status: data.status || undefined,
     totalEpisodes: data.episodes || undefined,
+    originalTitle: data.title_japanese || data.title || undefined,
+    voteCount: data.scored_by || undefined,
+    popularity: data.members || undefined,
+    language: 'Japanese',
+    studios: (data.studios || []).map((s: any) => s.name),
+    ageRating: data.rating || undefined,
+    releaseDate: data.aired?.from || undefined,
   };
 
   try {
