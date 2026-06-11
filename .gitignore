@@ -8,6 +8,9 @@ build/
 .next/
 out/
 
+# User data store (backend JSON database)
+backend/data/
+
 # Environment variables
 .env
 .env.local

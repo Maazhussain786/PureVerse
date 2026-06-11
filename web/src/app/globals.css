@@ -7,10 +7,15 @@
   --bg-card: #13151a;
   --bg-elevated: #1a1c22;
 
-  --accent-primary: #00F5D4; /* Cyber Teal / Neon Cyan */
-  --accent-hover: #33f7de;
-  --accent-glow: rgba(0, 245, 212, 0.35);
-  --accent-subtle: rgba(0, 245, 212, 0.10);
+  --accent-primary: #34D399; /* PureVerse Emerald (primary brand accent) */
+  --accent-hover: #6EE7B7;
+  --accent-glow: rgba(52, 211, 153, 0.35);
+  --accent-subtle: rgba(52, 211, 153, 0.10);
+
+  /* Secondary accent — Cyber Teal, used for highlights & depth */
+  --accent-teal: #00F5D4;
+  --accent-teal-glow: rgba(0, 245, 212, 0.32);
+  --accent-teal-subtle: rgba(0, 245, 212, 0.10);
 
   --accent-lime: #A2FF00; /* High-Energy Neon Lime-Green */
   --accent-lime-glow: rgba(162, 255, 0, 0.35);
@@ -68,11 +73,11 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 245, 212, 0.15);
+  background: rgba(52, 211, 153, 0.15);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 245, 212, 0.3);
+  background: rgba(52, 211, 153, 0.3);
 }
 
 /* ─── Glass Panel ─── */
@@ -105,6 +110,51 @@ body {
   background-clip: text;
 }
 
+/* ─── Skeleton Animations ─── */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-elevated);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+/* ─── Drag-to-Swipe Scrolling ─── */
+.drag-scroll {
+  cursor: grab;
+}
+.drag-scroll.dragging {
+  cursor: grabbing;
+  user-select: none;
+  scroll-snap-type: none !important;
+}
+.drag-scroll.dragging * {
+  pointer-events: none; /* no hover jank mid-drag */
+}
+.drag-scroll img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 /* ─── Keyframe Animations ─── */
 @keyframes fadeInUp {
   from {
@@ -127,21 +177,12 @@ body {
   to { opacity: 0; }
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
 @keyframes pulseGlow {
   0%, 100% {
     box-shadow: 0 0 20px var(--accent-glow);
   }
   50% {
-    box-shadow: 0 0 40px var(--accent-glow), 0 0 60px rgba(0, 245, 212, 0.15);
+    box-shadow: 0 0 40px var(--accent-glow), 0 0 60px rgba(52, 211, 153, 0.15);
   }
 }
 
@@ -288,7 +329,7 @@ body {
 }
 .media-card-ranked:hover .rank-number {
   -webkit-text-stroke-color: var(--accent-hover);
-  text-shadow: 0 0 40px var(--accent-glow), 0 0 70px rgba(0, 245, 212, 0.25);
+  text-shadow: 0 0 40px var(--accent-glow), 0 0 70px rgba(52, 211, 153, 0.25);
 }
 
 /* ─── Media Card Hover Effect ─── */
@@ -313,16 +354,23 @@ body {
 
 /* ─── Premium Spacing System (OTT rhythm) ─── */
 :root {
-  --space-hero-to-section: 96px;
-  --space-section: 72px;
+  --space-hero-to-section: 80px;
+  --space-section: 64px;
   --space-title-to-content: 24px;
+}
+@media (min-width: 768px) {
+  :root {
+    --space-hero-to-section: 112px;
+    --space-section: 80px;
+    --space-title-to-content: 28px;
+  }
 }
 /* Horizontal row scroller: generous vertical padding so the 1.08 hover scale
    is never clipped by the overflow-x container (overflow-y becomes auto when
    overflow-x is auto, so we reserve room with padding instead). */
 .row-scroller {
-  padding-top: 26px;
-  padding-bottom: 30px;
+  padding-top: 28px;
+  padding-bottom: 32px;
 }
 
 /* ─── Progress Bar (Continue Watching) ─── */
@@ -380,7 +428,7 @@ body {
 }
 .btn-glass:hover {
   background: var(--glass-hover);
-  border-color: rgba(0, 245, 212, 0.25);
+  border-color: rgba(52, 211, 153, 0.25);
 }
 
 /* ─── Type Pill ─── */
@@ -399,7 +447,7 @@ body {
   color: #66e5f7;
 }
 .type-pill-tv {
-  background: rgba(0, 245, 212, 0.15);
+  background: var(--accent-teal-subtle);
   color: #66f7e5;
 }
 .type-pill-anime {
@@ -416,7 +464,7 @@ body {
 }
 .navbar-glass.scrolled {
   background: rgba(9, 9, 12, 0.88);
-  border-bottom: 1px solid rgba(0, 245, 212, 0.08);
+  border-bottom: 1px solid rgba(52, 211, 153, 0.08);
 }
 
 /* ─── Search Overlay ─── */
@@ -446,7 +494,7 @@ body {
   transition: all var(--transition-base);
 }
 .season-dropdown:hover {
-  border-color: rgba(0, 245, 212, 0.3);
+  border-color: rgba(52, 211, 153, 0.3);
 }
 .season-dropdown:focus {
   border-color: var(--accent-primary);
@@ -463,13 +511,13 @@ body {
   cursor: pointer;
 }
 .episode-card:hover {
-  background: rgba(0, 245, 212, 0.05);
-  border-color: rgba(0, 245, 212, 0.2);
+  background: rgba(52, 211, 153, 0.05);
+  border-color: rgba(52, 211, 153, 0.2);
 }
 .episode-card.active {
   border-color: var(--accent-primary);
-  background: rgba(0, 245, 212, 0.12);
-  box-shadow: 0 0 20px rgba(0, 245, 212, 0.08);
+  background: rgba(52, 211, 153, 0.12);
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.08);
 }
 
 /* ─── Profile Dropdown ─── */
@@ -501,7 +549,7 @@ body {
   text-align: left;
 }
 .profile-dropdown-item:hover {
-  background: rgba(0, 245, 212, 0.06);
+  background: rgba(52, 211, 153, 0.06);
   color: white;
 }
 .profile-dropdown-divider {
@@ -557,5 +605,5 @@ body {
 
 .custom-scrollbar::-webkit-scrollbar { width: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0, 245, 212, 0.12); border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 245, 212, 0.25); }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(52, 211, 153, 0.12); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(52, 211, 153, 0.25); }
