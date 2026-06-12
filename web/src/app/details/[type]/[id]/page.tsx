@@ -72,22 +72,6 @@ function typeLabel(type: string): string {
   return type;
 }
 
-// ── Stat card ──
-function StatCard({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) {
-  return (
-    <div className="rounded-2xl bg-[var(--bg-card)]/60 ring-1 ring-white/8 p-4 hover:ring-[var(--accent-primary)]/30 hover:bg-[var(--bg-elevated)]/60 transition-all duration-300">
-      <div className="flex items-center gap-2 mb-2 text-[var(--text-muted)]">
-        {icon}
-        <span className="text-[11px] font-semibold uppercase tracking-[0.12em]">{label}</span>
-      </div>
-      <p className="text-lg md:text-xl font-bold text-white leading-tight truncate" style={{ fontFamily: "var(--font-space)" }}>
-        {value}
-      </p>
-      {sub && <p className="text-[11px] text-[var(--text-muted)] mt-0.5 truncate">{sub}</p>}
-    </div>
-  );
-}
-
 const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)]";
 
@@ -174,7 +158,7 @@ export default function DetailsPage() {
           <img src="/logos/Small_logo.png" alt="PureVerse" className="w-14 h-14 mx-auto mb-5 rounded-xl object-contain opacity-80" />
           <h1 className="text-2xl font-bold text-white mb-3">Title unavailable</h1>
           <p className="text-[var(--text-muted)] mb-6">We couldn&apos;t load this title. Make sure the backend is running.</p>
-          <Link href="/" className="btn-primary">Back to Home</Link>
+          <Link href="/" className="btn-primary inline-flex">Back to Home</Link>
         </div>
       </main>
     );
@@ -250,28 +234,13 @@ export default function DetailsPage() {
   if (media.status) chips.push({ label: media.status, tone: "outline" });
   if (media.language) chips.push({ label: media.language });
 
-  // Stat cards (only those with real data)
-  const starIcon = (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-  );
-  const dot = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /></svg>;
-  const stats: { icon: React.ReactNode; label: string; value: string; sub?: string }[] = [];
-  if (media.rating > 0) stats.push({ icon: starIcon, label: "Rating", value: media.rating.toFixed(1), sub: media.voteCount ? `${formatCompact(media.voteCount)} votes` : undefined });
-  if (media.totalSeasons) stats.push({ icon: dot, label: "Seasons", value: String(media.totalSeasons) });
-  if (media.totalEpisodes) stats.push({ icon: dot, label: "Episodes", value: String(media.totalEpisodes) });
-  if (runtimeStr) stats.push({ icon: dot, label: "Runtime", value: runtimeStr });
-  if (media.popularity) stats.push({ icon: dot, label: "Popularity", value: formatCompact(media.popularity) || "—" });
-  if (media.releaseDate || media.releaseYear) stats.push({ icon: dot, label: "Released", value: formatDate(media.releaseDate) || String(media.releaseYear) });
-  if (media.status) stats.push({ icon: dot, label: "Status", value: media.status });
-  if (media.language) stats.push({ icon: dot, label: "Language", value: media.language });
-
   const recsTitle =
     type === "anime" ? "Similar Anime" : type === "movie" ? "Similar Movies" : type === "tv" ? "Similar Series" : "More Like This";
 
   return (
     <main className="min-h-screen pb-24 lg:pb-0">
       {/* ─── Cinematic Hero Section ─── */}
-      <div className="relative w-full min-h-[85vh] lg:min-h-screen flex items-end pb-12 pt-32">
+      <div className="relative w-full min-h-[85vh] lg:min-h-screen flex items-end pb-12 pt-32" style={{ paddingTop: "140px", paddingBottom: "48px", minHeight: "100vh" }}>
         {/* Background Image & Gradients */}
         <div className="absolute inset-0 overflow-hidden">
           {backdrop ? (
@@ -294,28 +263,16 @@ export default function DetailsPage() {
         {/* ─── Content ─── */}
         <div className="relative z-10 px-5 md:px-10 lg:px-16 max-w-screen-2xl w-full">
           <div className="max-w-3xl">
-            {/* Brand Badge — real PureVerse logo mark */}
-            <div className="flex items-center gap-2.5 mb-5 animate-fade-in-up" style={{ animationDelay: "100ms" }}>
-              <img
-                src="/logos/Small_logo.png"
-                alt="PureVerse"
-                className="w-7 h-7 rounded-md object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
-              />
-              <span className="text-sm font-semibold tracking-[0.18em] uppercase text-white/90 drop-shadow-md">
-                PureVerse Original
-              </span>
-            </div>
-
             {/* Title */}
             <h1 
-              className="text-5xl md:text-7xl lg:text-[5.5rem] font-bold leading-[1.05] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] mb-5 animate-fade-in-up"
-              style={{ fontFamily: "var(--font-cinzel), serif", animationDelay: "200ms" }}
+              className="text-5xl md:text-7xl lg:text-[5.5rem] font-bold leading-[1.05] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] mb-8 animate-fade-in-up"
+              style={{ fontFamily: "var(--font-cinzel), serif", animationDelay: "200ms", marginBottom: "32px", lineHeight: "1.15" }}
             >
               {media.title}
             </h1>
 
             {/* Metadata (Year | Seasons | Genre | Stars) */}
-            <div className="flex flex-wrap items-center gap-4 text-[15px] font-semibold text-white/95 drop-shadow-md mb-7 animate-fade-in-up" style={{ animationDelay: "300ms" }}>
+            <div className="flex flex-wrap items-center gap-4 text-[15px] font-semibold text-white/95 drop-shadow-md mb-10 animate-fade-in-up" style={{ animationDelay: "300ms", marginBottom: "40px" }}>
               <span>{media.releaseYear || new Date().getFullYear()}</span>
               {media.totalSeasons ? <span>{media.totalSeasons} Seasons</span> : null}
               {!media.totalSeasons && runtimeStr ? <span>{runtimeStr}</span> : null}
@@ -333,7 +290,7 @@ export default function DetailsPage() {
             </div>
 
             {/* Synopsis */}
-            <p className="text-[15px] md:text-[17px] text-white/80 leading-relaxed mb-10 max-w-2xl drop-shadow-md animate-fade-in-up" style={{ animationDelay: "400ms" }}>
+            <p className="text-[15px] md:text-[17px] text-white/80 leading-relaxed mb-12 max-w-2xl drop-shadow-md animate-fade-in-up" style={{ animationDelay: "400ms", marginBottom: "48px" }}>
               {media.synopsis || "No synopsis available."}
             </p>
 
@@ -375,20 +332,34 @@ export default function DetailsPage() {
                 </button>
               )}
             </div>
+
+            {/* Additional Details (Netflix style) */}
+            <div className="mt-16 mb-8 flex flex-col sm:flex-row gap-6 sm:gap-16 text-[15px] leading-relaxed text-[var(--text-muted)] animate-fade-in-up" style={{ animationDelay: "600ms", marginTop: "64px", marginBottom: "32px" }}>
+              <div className="space-y-2.5">
+                {media.genres && media.genres.length > 0 && (
+                  <p><span className="text-white/60 font-semibold mr-2">Genres:</span> <span className="text-white/90">{media.genres.join(", ")}</span></p>
+                )}
+                {media.cast && media.cast.length > 0 && (
+                  <p><span className="text-white/60 font-semibold mr-2">Cast:</span> <span className="text-white/90">{media.cast.slice(0, 3).map(c => c.name).join(", ")}{media.cast.length > 3 ? "..." : ""}</span></p>
+                )}
+              </div>
+              <div className="space-y-2.5">
+                {media.language && (
+                  <p><span className="text-white/60 font-semibold mr-2">Language:</span> <span className="text-white/90">{media.language}</span></p>
+                )}
+                {media.status && (
+                  <p><span className="text-white/60 font-semibold mr-2">Status:</span> <span className="text-white/90">{media.status}</span></p>
+                )}
+                {media.releaseDate && (
+                  <p><span className="text-white/60 font-semibold mr-2">Released:</span> <span className="text-white/90">{formatDate(media.releaseDate)}</span></p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="relative z-10 px-5 md:px-10 lg:px-16 max-w-screen-2xl mx-auto">
-        {/* ─── Content Statistics ─── */}
-        {stats.length > 0 && (
-          <section className="mt-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-            {stats.map((s, i) => (
-              <StatCard key={i} icon={s.icon} label={s.label} value={s.value} sub={s.sub} />
-            ))}
-          </section>
-        )}
-
+      <div className="relative z-10 px-5 md:px-10 lg:px-16 max-w-screen-2xl mx-auto mt-16 md:mt-24" style={{ marginTop: "96px" }}>
         {/* ─── Cast ─── */}
         {media.cast && media.cast.length > 0 && (
           <section className="mt-14">
@@ -463,11 +434,11 @@ export default function DetailsPage() {
         <div className="h-16" />
       </div>
 
-      {/* ─── Sticky mobile CTA ─── */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 px-4 pt-8 pb-4 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/95 to-transparent pointer-events-none">
+      {/* ─── Sticky mobile CTA (sits above the bottom tab bar) ─── */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 px-4 pt-10 pb-[calc(env(safe-area-inset-bottom)+72px)] bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/95 to-transparent pointer-events-none">
         <Link
           href={primaryHref}
-          className={`pointer-events-auto w-full py-4 rounded-full inline-flex items-center justify-center gap-2.5 bg-[var(--accent-primary)] text-black font-bold text-sm shadow-[0_0_24px_var(--accent-glow)] active:scale-[0.98] transition-transform ${focusRing}`}
+          className={`pointer-events-auto btn-primary btn-lg btn-block ${focusRing}`}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4" /></svg>
           {primaryLabel}
