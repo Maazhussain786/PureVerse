@@ -63,9 +63,12 @@ export default function EpisodePanel({
       initialEpisodes &&
       initialEpisodes.length > 0 &&
       (initialEpisodes[0].seasonNumber === selectedSeason || initialEpisodes[0].seasonNumber == null);
+    // Only lift episodes to the parent when the panel is showing the season
+    // that's actually being watched — otherwise browsing other seasons in the
+    // dropdown would corrupt the watch page's next/prev/autoplay computation.
     if (initialMatches) {
       setEpisodes(initialEpisodes);
-      onEpisodesLoaded?.(initialEpisodes);
+      if (selectedSeason === season) onEpisodesLoaded?.(initialEpisodes);
       return;
     }
     let cancelled = false;
@@ -75,7 +78,7 @@ export default function EpisodePanel({
       .then((j) => {
         if (cancelled) return;
         setEpisodes(j.data || []);
-        onEpisodesLoaded?.(j.data || []);
+        if (selectedSeason === season) onEpisodesLoaded?.(j.data || []);
       })
       .catch(() => !cancelled && setEpisodes([]))
       .finally(() => !cancelled && setLoading(false));

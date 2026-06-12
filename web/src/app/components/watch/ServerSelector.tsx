@@ -64,6 +64,7 @@ export default function ServerSelector({
             ? "bg-[var(--accent-primary)] text-black shadow-[0_0_16px_var(--accent-glow)]"
             : "bg-white/[0.04] border border-white/10 text-[var(--text-secondary)] hover:text-white hover:border-[var(--accent-primary)]/40"
         } ${locked && !active ? "opacity-40 cursor-not-allowed" : ""}`}
+        style={{ padding: compact ? "6px 16px" : "10px 16px", gap: "8px" }}
       >
         <span className={`w-1.5 h-1.5 rounded-full ${active ? "bg-black animate-pulse" : "bg-[var(--accent-primary)]/60"}`} />
         {source.server || `Server ${idx + 1}`}
@@ -80,11 +81,11 @@ export default function ServerSelector({
   };
 
   return (
-    <div className={compact ? "space-y-3" : "space-y-4"}>
+    <div className={compact ? "space-y-3" : "space-y-4"} style={{ display: "flex", flexDirection: "column", gap: compact ? "12px" : "16px" }}>
       {grouped ? (
         GROUPS.filter((g) => grouped.has(g.key)).map((group) => (
           <div key={group.key}>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2" style={{ gap: "8px", marginBottom: "8px" }}>
               <span className={`text-[10px] font-black tracking-widest px-2 py-0.5 rounded ${
                 group.key === "dub"
                   ? "bg-[var(--accent-teal-subtle)] text-[var(--accent-teal)]"
@@ -96,13 +97,13 @@ export default function ServerSelector({
               </span>
               {!compact && <span className="text-[10px] text-[var(--text-muted)]">{group.hint}</span>}
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" style={{ gap: "8px" }}>
               {grouped.get(group.key)!.map(({ idx, source }) => chip(idx, source))}
             </div>
           </div>
         ))
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" style={{ gap: "8px" }}>
           {sources.map((source, idx) => chip(idx, source))}
         </div>
       )}
