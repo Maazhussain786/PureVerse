@@ -76,6 +76,7 @@ export default function ChatPanel({ messages, selfId, muted, onSend }: ChatPanel
         onScroll={handleScroll}
         className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 py-3 space-y-0.5"
         aria-live="polite"
+        style={{ padding: "12px", display: "flex", flexDirection: "column", gap: "2px" }}
       >
         {messages.length === 0 && (
           <p className="text-xs text-[var(--text-muted)] text-center py-8">
@@ -96,7 +97,7 @@ export default function ChatPanel({ messages, selfId, muted, onSend }: ChatPanel
           }
           const isSelf = msg.authorSocketId === selfId;
           return (
-            <div key={msg.id} className="group flex items-start gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-white/[0.03] animate-fade-in">
+            <div key={msg.id} className="group flex items-start gap-2.5 px-1.5 py-1.5 rounded-lg hover:bg-white/[0.03] animate-fade-in" style={{ padding: "6px", gap: "10px" }}>
               {msg.authorAvatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -112,7 +113,7 @@ export default function ChatPanel({ messages, selfId, muted, onSend }: ChatPanel
                 </span>
               )}
               <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-baseline gap-2" style={{ gap: "8px" }}>
                   <span className={`text-xs font-bold truncate ${isSelf ? "text-[var(--accent-primary)]" : "text-white"}`}>
                     {msg.authorName}
                   </span>
@@ -125,7 +126,7 @@ export default function ChatPanel({ messages, selfId, muted, onSend }: ChatPanel
                     {formatTime(msg.createdAt)}
                   </span>
                 </div>
-                <p className="text-[13px] text-[var(--text-secondary)] leading-snug break-words">
+                <p className="text-[13px] text-[var(--text-primary)] leading-snug break-words">
                   {msg.text}
                 </p>
               </div>
@@ -140,6 +141,7 @@ export default function ChatPanel({ messages, selfId, muted, onSend }: ChatPanel
           <button
             onClick={jumpToLatest}
             className="absolute -top-10 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full text-[11px] font-bold text-black bg-[var(--accent-primary)] shadow-[0_4px_16px_var(--accent-glow)] animate-fade-in"
+            style={{ padding: "6px 14px" }}
           >
             ↓ {missed} new message{missed !== 1 ? "s" : ""}
           </button>
@@ -147,8 +149,8 @@ export default function ChatPanel({ messages, selfId, muted, onSend }: ChatPanel
       )}
 
       {/* Composer */}
-      <div className="flex-shrink-0 border-t border-white/[0.06] p-3 space-y-2">
-        <div className="flex gap-1 overflow-x-auto hide-scrollbar">
+      <div className="flex-shrink-0 border-t border-white/[0.06] p-3 space-y-2" style={{ padding: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+        <div className="flex gap-1 overflow-x-auto hide-scrollbar" style={{ gap: "4px" }}>
           {QUICK_EMOJI.map((emoji) => (
             <button
               key={emoji}
@@ -160,7 +162,7 @@ export default function ChatPanel({ messages, selfId, muted, onSend }: ChatPanel
             </button>
           ))}
         </div>
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2" style={{ gap: "8px" }}>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value.slice(0, 500))}
@@ -174,12 +176,14 @@ export default function ChatPanel({ messages, selfId, muted, onSend }: ChatPanel
             disabled={muted}
             rows={1}
             className="flex-1 resize-none px-3.5 py-2.5 rounded-xl bg-white/[0.05] border border-white/10 text-sm text-white placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent-primary)]/50 transition-colors disabled:opacity-50 max-h-24 custom-scrollbar"
+            style={{ padding: "10px 14px" }}
           />
           <button
             onClick={send}
             disabled={muted || !draft.trim()}
             className="flex-shrink-0 w-10 h-10 rounded-xl bg-[var(--accent-primary)] text-black flex items-center justify-center hover:bg-[var(--accent-hover)] transition-all disabled:opacity-30"
             aria-label="Send message"
+            style={{ width: "40px", height: "40px" }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="m22 2-7 20-4-9-9-4Z" />

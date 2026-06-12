@@ -351,7 +351,7 @@ export default function PartyRoomPage() {
   // ─── Render: terminal phases ───────────────────────────
   if (phase === "notfound" || phase === "kicked") {
     return (
-      <main className="min-h-screen pt-32 px-6 flex flex-col items-center text-center">
+      <main className="min-h-screen pt-32 px-6 flex flex-col items-center text-center" style={{ paddingTop: "128px", paddingLeft: "24px", paddingRight: "24px" }}>
         <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-6">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.5">
             {phase === "kicked" ? (
@@ -369,7 +369,7 @@ export default function PartyRoomPage() {
             ? "The host removed you from the room."
             : `Room ${code} doesn't exist or has ended.`}
         </p>
-        <Link href="/party" className="btn-primary text-sm px-7 py-2.5">
+        <Link href="/party" className="btn-primary">
           Browse Watch Parties
         </Link>
       </main>
@@ -379,7 +379,7 @@ export default function PartyRoomPage() {
   // ─── Render: join gate ─────────────────────────────────
   if (phase !== "in") {
     return (
-      <main className="min-h-screen pt-28 px-6 flex justify-center">
+      <main className="min-h-screen pt-28 px-6 flex justify-center" style={{ paddingTop: "112px", paddingLeft: "24px", paddingRight: "24px" }}>
         <div className="w-full max-w-md">
           {phase === "connecting" ? (
             <div className="flex flex-col items-center pt-16">
@@ -430,7 +430,7 @@ export default function PartyRoomPage() {
                 <button
                   onClick={join}
                   disabled={joining}
-                  className="w-full py-3 rounded-xl text-sm font-bold text-black bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] transition-all disabled:opacity-50"
+                  className="btn-primary btn-block btn-lg"
                 >
                   {joining ? "Joining…" : "Join Party"}
                 </button>
@@ -444,7 +444,7 @@ export default function PartyRoomPage() {
 
   // ─── Render: in-room ───────────────────────────────────
   return (
-    <main className="min-h-screen bg-[var(--bg-primary)] pt-[68px]">
+    <main className="min-h-screen bg-[var(--bg-primary)] pt-[68px]" style={{ paddingTop: "100px" }}>
       <div className="max-w-[1800px] mx-auto px-3 md:px-5 pt-3 pb-6">
         {/* Top bar */}
         <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
@@ -472,7 +472,7 @@ export default function PartyRoomPage() {
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
               {formatClock(partyClock)}
             </span>
-            <button onClick={() => setInviteOpen(true)} className="btn-glass text-xs px-3.5 py-2">
+            <button onClick={() => setInviteOpen(true)} className="btn-secondary btn-sm" style={{ padding: "8px 16px" }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                 <line x1="19" x2="19" y1="8" y2="14" /><line x1="22" x2="16" y1="11" y2="11" />
@@ -480,7 +480,7 @@ export default function PartyRoomPage() {
               Invite
             </button>
             {isHost && (
-              <button onClick={() => setSettingsOpen(true)} className="btn-glass text-xs px-3.5 py-2" aria-label="Room settings">
+              <button onClick={() => setSettingsOpen(true)} className="btn-secondary btn-sm" aria-label="Room settings" style={{ padding: "8px 16px" }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
                   <circle cx="12" cy="12" r="3" />
@@ -490,7 +490,8 @@ export default function PartyRoomPage() {
             )}
             <button
               onClick={() => router.push("/party")}
-              className="btn-glass text-xs px-3.5 py-2 text-red-400 border-red-400/20 hover:border-red-400/40"
+              className="btn-danger btn-sm"
+              style={{ padding: "8px 16px" }}
             >
               Leave
             </button>
@@ -501,7 +502,7 @@ export default function PartyRoomPage() {
         <div className="flex flex-col lg:flex-row gap-4">
           {/* ── Player column ── */}
           <div className="flex-1 min-w-0">
-            <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black ring-1 ring-[var(--accent-teal)]/15 shadow-[0_8px_50px_rgba(0,0,0,0.85)]">
+            <div className="relative w-full aspect-video rounded-2xl bg-black ring-1 ring-[var(--accent-teal)]/15 shadow-[0_8px_50px_rgba(0,0,0,0.85)]">
               {streamLoading ? (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-10 h-10 border-2 border-[var(--accent-teal)] border-t-transparent rounded-full animate-spin" />
@@ -510,7 +511,7 @@ export default function PartyRoomPage() {
                 <iframe
                   key={activeSource.url}
                   src={activeSource.url}
-                  className="w-full h-full border-none"
+                  className="w-full h-full border-none rounded-2xl"
                   allowFullScreen
                   allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                   referrerPolicy="origin"
@@ -539,7 +540,7 @@ export default function PartyRoomPage() {
             </div>
 
             {/* Party controls */}
-            <div className="mt-3 glass-panel rounded-2xl p-3.5 flex items-center gap-3 flex-wrap">
+            <div className="mt-3 glass-panel rounded-2xl p-3.5 flex items-center gap-3 flex-wrap" style={{ padding: "14px", gap: "12px", marginTop: "12px" }}>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => emitPlayback(room!.playback.isPlaying ? "pause" : "play")}
@@ -549,6 +550,7 @@ export default function PartyRoomPage() {
                       ? "bg-[var(--accent-primary)] text-black hover:bg-[var(--accent-hover)] hover:shadow-[0_0_16px_var(--accent-glow)]"
                       : "bg-white/5 text-[var(--text-muted)] cursor-not-allowed"
                   }`}
+                  style={{ padding: "10px 20px" }}
                   title={canControl ? undefined : "Host has restricted playback control"}
                 >
                   {room!.playback.isPlaying ? (
@@ -560,6 +562,7 @@ export default function PartyRoomPage() {
                 <button
                   onClick={() => emitPlayback("resync")}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--accent-teal-subtle)] border border-[var(--accent-teal)]/30 text-[var(--accent-teal)] hover:border-[var(--accent-teal)]/60 transition-all"
+                  style={{ padding: "10px 16px" }}
                   title="Broadcast the current party position to everyone"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -583,7 +586,7 @@ export default function PartyRoomPage() {
 
             {/* Server selector (host switches for everyone) */}
             {sources.length > 0 && (
-              <div className="mt-3 glass-panel rounded-2xl p-4">
+              <div className="mt-3 glass-panel rounded-2xl p-4" style={{ marginTop: "12px", padding: "16px" }}>
                 <h3 className="text-xs font-bold text-white mb-3 uppercase tracking-widest" style={{ fontFamily: "var(--font-space)" }}>
                   Servers
                 </h3>
@@ -633,6 +636,7 @@ export default function PartyRoomPage() {
                         className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold transition-colors relative ${
                           tab === t.key ? "text-white" : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
                         }`}
+                        style={{ padding: "12px" }}
                       >
                         {t.label}
                         {t.badge > 0 && tab !== t.key && (
@@ -741,7 +745,7 @@ function InviteModal({ code, onClose, onCopied }: { code: string; onClose: () =>
   return (
     <div className="fixed inset-0 z-[92] flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-2xl bg-[var(--bg-card)] border border-white/10 p-6 animate-scale-in">
+      <div className="relative w-full max-w-sm rounded-2xl bg-[var(--bg-card)] border border-white/10 p-6 animate-scale-in" style={{ padding: "24px" }}>
         <h2 className="text-lg font-bold text-white mb-1" style={{ fontFamily: "var(--font-space)" }}>
           Invite friends
         </h2>
@@ -749,26 +753,27 @@ function InviteModal({ code, onClose, onCopied }: { code: string; onClose: () =>
           Room code: <span className="font-mono font-bold text-[var(--accent-teal)] tracking-[0.2em]">{code}</span>
         </p>
 
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-4" style={{ gap: "8px", marginBottom: "16px" }}>
           <input
             readOnly
             value={link}
             className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-xs text-[var(--text-secondary)] outline-none truncate"
             onFocus={(e) => e.target.select()}
+            style={{ padding: "10px 14px" }}
           />
-          <button onClick={onCopied} className="px-4 py-2.5 rounded-xl text-xs font-bold text-black bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] transition-colors flex-shrink-0">
+          <button onClick={onCopied} className="btn-primary btn-sm shrink-0" style={{ padding: "8px 16px" }}>
             Copy
           </button>
         </div>
 
         {isSignedIn && (
           <>
-            <div className="flex items-center gap-3 my-4">
+            <div className="flex items-center gap-3 my-4" style={{ gap: "12px", marginTop: "16px", marginBottom: "16px" }}>
               <span className="flex-1 h-px bg-white/10" />
               <span className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">or notify a user</span>
               <span className="flex-1 h-px bg-white/10" />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2" style={{ gap: "8px" }}>
               <input
                 type="text"
                 value={to}
@@ -776,11 +781,13 @@ function InviteModal({ code, onClose, onCopied }: { code: string; onClose: () =>
                 onKeyDown={(e) => e.key === "Enter" && sendInvite()}
                 placeholder="Username or email"
                 className="flex-1 px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent-primary)]/50 transition-colors"
+                style={{ padding: "10px 14px" }}
               />
               <button
                 onClick={sendInvite}
                 disabled={status === "sending" || !to.trim()}
                 className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--accent-teal-subtle)] border border-[var(--accent-teal)]/30 text-[var(--accent-teal)] hover:border-[var(--accent-teal)]/60 transition-all disabled:opacity-40 flex-shrink-0"
+                style={{ padding: "10px 16px" }}
               >
                 {status === "sending" ? "…" : status === "sent" ? "Sent ✓" : "Invite"}
               </button>
@@ -822,7 +829,7 @@ function RoomSettingsModal({
   return (
     <div className="fixed inset-0 z-[92] flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-2xl bg-[var(--bg-card)] border border-white/10 p-6 animate-scale-in space-y-4">
+      <div className="relative w-full max-w-sm rounded-2xl bg-[var(--bg-card)] border border-white/10 p-6 animate-scale-in space-y-4" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
         <h2 className="text-lg font-bold text-white" style={{ fontFamily: "var(--font-space)" }}>
           Room settings
         </h2>
@@ -836,6 +843,7 @@ function RoomSettingsModal({
             onChange={(e) => setName(e.target.value)}
             maxLength={60}
             className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white outline-none focus:border-[var(--accent-primary)]/50 transition-colors"
+            style={{ padding: "10px 16px" }}
           />
         </div>
 
@@ -844,6 +852,7 @@ function RoomSettingsModal({
           className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/10 text-left"
           role="switch"
           aria-checked={allowGuestControl}
+          style={{ padding: "12px", gap: "12px" }}
         >
           <span>
             <span className="block text-sm font-semibold text-white">Everyone can control playback</span>
@@ -859,6 +868,7 @@ function RoomSettingsModal({
           className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/10 text-left"
           role="switch"
           aria-checked={isPublic}
+          style={{ padding: "12px", gap: "12px" }}
         >
           <span>
             <span className="block text-sm font-semibold text-white">Public room</span>
@@ -880,11 +890,12 @@ function RoomSettingsModal({
             placeholder={room.hasPassword ? "Type new password, empty to remove" : "Set a password"}
             maxLength={60}
             className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent-primary)]/50 transition-colors"
+            style={{ padding: "10px 16px" }}
           />
         </div>
 
-        <div className="flex gap-2 pt-1">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-xs font-bold text-[var(--text-secondary)] bg-white/5 border border-white/10 hover:text-white transition-colors">
+        <div className="flex gap-2.5 pt-1" style={{ gap: "10px", paddingTop: "4px" }}>
+          <button onClick={onClose} className="btn-secondary flex-1" style={{ padding: "10px 16px", fontWeight: "bold" }}>
             Cancel
           </button>
           <button
@@ -896,7 +907,8 @@ function RoomSettingsModal({
                 ...(password !== null ? { password } : {}),
               })
             }
-            className="flex-1 py-2.5 rounded-xl text-xs font-bold text-black bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] transition-colors"
+            className="btn-primary flex-1"
+            style={{ padding: "10px 16px", fontWeight: "bold" }}
           >
             Save settings
           </button>
