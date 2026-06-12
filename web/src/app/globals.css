@@ -391,44 +391,228 @@ body {
   box-shadow: 0 0 8px var(--accent-glow);
 }
 
-/* ─── Button Styles ─── */
-.btn-primary {
-  background: var(--accent-primary);
-  color: #000;
-  border: none;
-  padding: 12px 32px;
-  border-radius: var(--radius-full);
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all var(--transition-base);
+/* ─── Button System (unified) ───────────────────────────────
+   One consistent button across the whole app. Variants are
+   self-contained so `className="btn-primary"` works on its own.
+   Defaults: 44px min target, rounded-rect, never cramped text,
+   consistent icon gap, premium hover/active/disabled/focus.     */
+.btn-primary,
+.btn-secondary,
+.btn-glass,
+.btn-danger,
+.btn-ghost {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition-base), border-color var(--transition-base),
+    color var(--transition-base), box-shadow var(--transition-base),
+    transform var(--transition-fast);
+}
+.btn-primary > svg,
+.btn-secondary > svg,
+.btn-glass > svg,
+.btn-danger > svg,
+.btn-ghost > svg {
+  flex-shrink: 0;
+}
+/* Focus ring (keyboard) */
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-glass:focus-visible,
+.btn-danger:focus-visible,
+.btn-ghost:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--accent-primary);
+}
+/* Active press */
+.btn-primary:active,
+.btn-secondary:active,
+.btn-glass:active,
+.btn-danger:active,
+.btn-ghost:active {
+  transform: scale(0.97);
+}
+/* Disabled */
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-glass:disabled,
+.btn-danger:disabled,
+.btn-ghost:disabled,
+.btn-primary[aria-disabled="true"],
+.btn-secondary[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* ── Primary: PureVerse emerald ── */
+.btn-primary {
+  background: var(--accent-primary);
+  color: #04130d;
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 16px rgba(52, 211, 153, 0.18);
 }
 .btn-primary:hover {
   background: var(--accent-hover);
-  box-shadow: var(--shadow-glow);
+  border-color: var(--accent-hover);
+  box-shadow: 0 6px 24px var(--accent-glow);
   transform: translateY(-1px);
 }
 
+/* ── Secondary: dark premium glass (alias: .btn-glass) ── */
+.btn-secondary,
 .btn-glass {
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: var(--glass-border);
   color: var(--text-primary);
-  padding: 12px 28px;
-  border-radius: var(--radius-full);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-base);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
+.btn-secondary:hover,
 .btn-glass:hover {
   background: var(--glass-hover);
-  border-color: rgba(52, 211, 153, 0.25);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+/* Selected/active toggle state for secondary buttons */
+.btn-secondary.is-active,
+.btn-glass.is-active {
+  background: var(--accent-subtle);
+  border-color: rgba(52, 211, 153, 0.45);
+  color: var(--accent-primary);
+}
+
+/* ── Danger: clear destructive ── */
+.btn-danger {
+  background: rgba(244, 63, 94, 0.1);
+  border-color: rgba(244, 63, 94, 0.28);
+  color: #fb7185;
+}
+.btn-danger:hover {
+  background: rgba(244, 63, 94, 0.16);
+  border-color: rgba(244, 63, 94, 0.55);
+  color: #fda4af;
+  transform: translateY(-1px);
+}
+
+/* ── Ghost: low-emphasis ── */
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.btn-ghost:hover {
+  background: var(--glass-bg);
+  color: #fff;
+}
+
+/* ── Size modifiers ── */
+.btn-sm {
+  min-height: 38px;
+  padding: 0 1rem;
+  font-size: 0.8125rem; /* 13px */
+  border-radius: var(--radius-sm);
+  gap: 0.375rem;
+}
+.btn-lg {
+  min-height: 52px;
+  padding: 0 2rem;
+  font-size: 1rem;
+  border-radius: var(--radius-lg);
+  gap: 0.625rem;
+}
+.btn-block {
+  width: 100%;
+}
+/* Square icon-only button */
+.btn-icon {
+  padding: 0;
+  width: 44px;
+  min-height: 44px;
+}
+.btn-icon.btn-sm {
+  width: 38px;
+  min-height: 38px;
+}
+.btn-icon.btn-lg {
+  width: 52px;
+  min-height: 52px;
+}
+
+/* ─── Form Inputs ─── */
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  outline: none;
+  transition: border-color var(--transition-base), box-shadow var(--transition-base),
+    background var(--transition-base);
+}
+.input::placeholder {
+  color: var(--text-muted);
+}
+.input:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.input:focus {
+  border-color: rgba(52, 211, 153, 0.5);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ─── Filter Chip ─── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+  padding: 0 0.95rem;
+  height: 36px;
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-base);
+}
+.chip:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.chip-active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #04130d;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+.chip-active:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #04130d;
 }
 
 /* ─── Type Pill ─── */

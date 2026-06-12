@@ -55,6 +55,7 @@ function Toggle({
       className="w-full flex items-center justify-between gap-4 py-3.5 text-left group"
       role="switch"
       aria-checked={checked}
+      style={{ gap: "16px", paddingBottom: "14px", paddingTop: "14px" }}
     >
       <span>
         <span className="block text-sm font-medium text-white">{label}</span>
@@ -79,7 +80,7 @@ function Toggle({
 
 function StatTile({ value, label, icon, accent }: { value: number; label: string; icon: React.ReactNode; accent: string }) {
   return (
-    <div className="glass-panel rounded-2xl p-5 flex items-center gap-4">
+    <div className="glass-panel rounded-2xl p-5 flex items-center gap-4" style={{ padding: "20px", gap: "16px" }}>
       <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${accent}1f`, color: accent }}>
         {icon}
       </div>
@@ -93,7 +94,7 @@ function StatTile({ value, label, icon, accent }: { value: number; label: string
 
 function SectionHeading({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center justify-between mb-4" style={{ marginBottom: "16px" }}>
       <h2 className="text-lg md:text-xl font-bold text-white" style={{ fontFamily: "var(--font-space)" }}>
         {title}
       </h2>
@@ -138,7 +139,7 @@ export default function ProfilePage() {
           Sign in to sync your watchlist, favorites, watch history and continue-watching
           across every device — plus notifications and watch parties.
         </p>
-        <button onClick={signIn} className="btn-primary text-sm px-8 py-3">
+        <button onClick={signIn} className="btn-primary btn-lg">
           Sign In to PureVerse
         </button>
       </main>
@@ -163,12 +164,12 @@ export default function ProfilePage() {
   };
 
   return (
-    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 max-w-[1200px] mx-auto">
+    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 max-w-[1200px] mx-auto" style={{ paddingTop: "120px", paddingBottom: "100px", paddingLeft: "40px", paddingRight: "40px" }}>
       {/* ─── Identity card ─── */}
       <section className="relative overflow-hidden rounded-3xl border border-white/[0.07] mb-8">
         <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-primary)]/[0.12] via-transparent to-[var(--accent-teal)]/[0.08]" />
         <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[var(--accent-primary)]/10 blur-3xl" />
-        <div className="relative p-6 md:p-10 flex flex-col sm:flex-row items-center sm:items-start gap-6">
+        <div className="relative p-6 md:p-10 flex flex-col sm:flex-row items-center sm:items-start gap-6" style={{ padding: "40px", gap: "24px" }}>
           {/* Avatar */}
           <button
             onClick={() => setAvatarOpen(true)}
@@ -189,7 +190,7 @@ export default function ProfilePage() {
 
           {/* Identity */}
           <div className="flex-1 min-w-0 text-center sm:text-left">
-            <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap">
+            <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap" style={{ gap: "12px" }}>
               {editingName ? (
                 <span className="flex items-center gap-2">
                   <input
@@ -238,16 +239,13 @@ export default function ProfilePage() {
               )}
             </p>
 
-            <div className="flex items-center justify-center sm:justify-start gap-2.5 mt-5 flex-wrap">
-              <button onClick={() => setAvatarOpen(true)} className="btn-glass text-xs px-4 py-2">
+            <div className="flex items-center justify-center sm:justify-start gap-2.5 mt-5 flex-wrap" style={{ gap: "10px", marginTop: "20px" }}>
+              <button onClick={() => setAvatarOpen(true)} className="btn-secondary btn-sm" style={{ padding: "8px 16px" }}>
                 Change Avatar
               </button>
-              <Link href="/mylist" className="btn-glass text-xs px-4 py-2">My List</Link>
-              <Link href="/history" className="btn-glass text-xs px-4 py-2">Watch History</Link>
-              <button
-                onClick={signOut}
-                className="btn-glass text-xs px-4 py-2 text-red-400 border-red-400/20 hover:border-red-400/40"
-              >
+              <Link href="/mylist" className="btn-secondary btn-sm" style={{ padding: "8px 16px" }}>My List</Link>
+              <Link href="/history" className="btn-secondary btn-sm" style={{ padding: "8px 16px" }}>Watch History</Link>
+              <button onClick={signOut} className="btn-danger btn-sm" style={{ padding: "8px 16px" }}>
                 Sign Out
               </button>
             </div>
@@ -256,7 +254,7 @@ export default function ProfilePage() {
       </section>
 
       {/* ─── Stats ─── */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12" style={{ gap: "16px", marginBottom: "48px" }}>
         <StatTile
           value={watchHistory.length}
           label="Titles watched"
@@ -279,7 +277,7 @@ export default function ProfilePage() {
 
       {/* ─── Continue Watching ─── */}
       {continueWatching.length > 0 && (
-        <section className="mb-12">
+        <section className="mb-12" style={{ marginBottom: "48px" }}>
           <SectionHeading title="Continue Watching" />
           <div className="flex gap-4 overflow-x-auto hide-scrollbar row-scroller -my-6">
             {continueWatching.map((item) => (
@@ -302,7 +300,7 @@ export default function ProfilePage() {
       )}
 
       {/* ─── Recently Watched ─── */}
-      <section className="mb-12">
+      <section className="mb-12" style={{ marginBottom: "48px" }}>
         <SectionHeading
           title="Recently Watched"
           action={
@@ -322,7 +320,7 @@ export default function ProfilePage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3" style={{ gap: "12px" }}>
             {recentHistory.map((item) => (
               <div key={item.key} className="glass-panel glass-panel-hover rounded-xl p-3 flex gap-3 items-center group relative">
                 <Link href={watchHref(item)} className="flex gap-3 items-center flex-1 min-w-0">
@@ -362,9 +360,9 @@ export default function ProfilePage() {
       </section>
 
       {/* ─── Settings ─── */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12" style={{ gap: "24px", marginBottom: "48px" }}>
         {/* Playback */}
-        <div className="glass-panel rounded-2xl p-6">
+        <div className="glass-panel rounded-2xl p-6" style={{ padding: "24px" }}>
           <h3 className="text-base font-bold text-white mb-2" style={{ fontFamily: "var(--font-space)" }}>
             Playback
           </h3>
@@ -375,12 +373,12 @@ export default function ProfilePage() {
               label="Autoplay next episode"
               description="Show the up-next prompt when an episode ends"
             />
-            <div className="py-3.5 flex items-center justify-between gap-4">
+            <div className="py-3.5 flex items-center justify-between gap-4" style={{ gap: "16px", paddingBottom: "14px", paddingTop: "14px" }}>
               <span>
                 <span className="block text-sm font-medium text-white">Preferred anime audio</span>
                 <span className="block text-xs text-[var(--text-muted)] mt-0.5">Pre-selects SUB or DUB servers</span>
               </span>
-              <div className="flex rounded-full bg-white/5 border border-white/10 p-0.5">
+              <div className="flex rounded-full bg-white/5 border border-white/10 p-0.5" style={{ padding: "2px" }}>
                 {(["sub", "dub"] as const).map((opt) => (
                   <button
                     key={opt}
@@ -390,6 +388,7 @@ export default function ProfilePage() {
                         ? "bg-[var(--accent-primary)] text-black"
                         : "text-[var(--text-secondary)] hover:text-white"
                     }`}
+                    style={{ padding: "6px 16px" }}
                   >
                     {opt}
                   </button>
@@ -400,7 +399,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Notifications */}
-        <div className="glass-panel rounded-2xl p-6">
+        <div className="glass-panel rounded-2xl p-6" style={{ padding: "24px" }}>
           <h3 className="text-base font-bold text-white mb-2" style={{ fontFamily: "var(--font-space)" }}>
             Notifications
           </h3>
@@ -428,21 +427,21 @@ export default function ProfilePage() {
       </section>
 
       {/* ─── Danger zone ─── */}
-      <section className="glass-panel rounded-2xl p-6 border-red-500/10">
+      <section className="glass-panel rounded-2xl p-6 border-red-500/10" style={{ padding: "24px" }}>
         <h3 className="text-base font-bold text-white mb-4" style={{ fontFamily: "var(--font-space)" }}>
           Data & Account
         </h3>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3" style={{ gap: "12px" }}>
           {confirmClear ? (
-            <span className="flex items-center gap-2">
+            <span className="flex items-center gap-2.5 flex-wrap">
               <span className="text-sm text-red-400">Clear all {watchHistory.length} history items?</span>
               <button
                 onClick={() => { clearHistory(); setConfirmClear(false); }}
-                className="px-4 py-2 rounded-full text-xs font-bold text-white bg-red-500 hover:bg-red-600 transition-colors"
+                className="btn-danger btn-sm"
               >
                 Yes, clear
               </button>
-              <button onClick={() => setConfirmClear(false)} className="btn-glass text-xs px-4 py-2">
+              <button onClick={() => setConfirmClear(false)} className="btn-secondary btn-sm">
                 Cancel
               </button>
             </span>
@@ -450,12 +449,13 @@ export default function ProfilePage() {
             <button
               onClick={() => setConfirmClear(true)}
               disabled={watchHistory.length === 0}
-              className="btn-glass text-xs px-4 py-2 text-red-400 border-red-400/20 hover:border-red-400/40 disabled:opacity-40"
+              className="btn-danger btn-sm"
+              style={{ padding: "8px 16px" }}
             >
               Clear watch history
             </button>
           )}
-          <button onClick={signOut} className="btn-glass text-xs px-4 py-2">
+          <button onClick={signOut} className="btn-secondary btn-sm" style={{ padding: "8px 16px" }}>
             Sign out of PureVerse
           </button>
         </div>
