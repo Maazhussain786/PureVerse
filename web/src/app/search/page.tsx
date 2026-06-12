@@ -402,7 +402,7 @@ function SearchClient() {
               {(activeFilterCount > 0 || tab !== "all") && (
                 <button
                   onClick={() => { setGenre(""); setYearIdx(0); setMinRating(0); setTab("all"); }}
-                  className="btn-glass text-xs px-5 py-2.5 mt-6"
+                  className="btn-secondary btn-sm mt-6"
                 >
                   Clear filters
                 </button>

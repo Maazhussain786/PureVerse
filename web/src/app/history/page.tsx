@@ -31,7 +31,7 @@ export default function HistoryPage() {
   const { watchHistory, clearHistory, removeFromHistory } = useUserState();
 
   return (
-    <main className="min-h-screen pt-24 px-6 md:px-10 lg:px-14 max-w-[1600px] mx-auto">
+    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-6 md:px-10 lg:px-14 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -57,10 +57,7 @@ export default function HistoryPage() {
         </div>
 
         {watchHistory.length > 0 && (
-          <button
-            onClick={clearHistory}
-            className="btn-glass text-xs px-4 py-2 text-red-400 border-red-400/20 hover:border-red-400/40 hover:text-red-300"
-          >
+          <button onClick={clearHistory} className="btn-danger btn-sm">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 6h18" />
               <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
@@ -177,7 +174,7 @@ export default function HistoryPage() {
           <p className="text-[var(--text-muted)] text-sm mb-6 max-w-md">
             Start watching movies, series, and anime. Your history will appear here so you can easily resume.
           </p>
-          <Link href="/" className="btn-primary text-sm px-6 py-2.5">
+          <Link href="/" className="btn-primary">
             Start Watching
           </Link>
         </div>

@@ -69,6 +69,7 @@ interface UserStateContextType {
   // Recent searches
   recentSearches: string[];
   addRecentSearch: (q: string) => void;
+  removeRecentSearch: (q: string) => void;
   clearRecentSearches: () => void;
 
   // True once the signed-in state has loaded from the server
@@ -93,6 +94,7 @@ const UserStateContext = createContext<UserStateContextType>({
   isInFavorites: () => false,
   recentSearches: [],
   addRecentSearch: noop,
+  removeRecentSearch: noop,
   clearRecentSearches: noop,
   hydrated: false,
 });
@@ -275,6 +277,19 @@ export function UserStateProvider({ children }: { children: React.ReactNode }) {
     [userId, signedIn]
   );
 
+  const removeRecentSearch = useCallback(
+    (q: string) => {
+      setRecentSearches((prev) => {
+        const updated = prev.filter((s) => s.toLowerCase() !== q.toLowerCase());
+        writeLocal(storageKey("searches", userId), updated);
+        return updated;
+      });
+      if (signedIn)
+        apiSilent(`/user/searches/${encodeURIComponent(q)}`, { method: "DELETE" });
+    },
+    [userId, signedIn]
+  );
+
   const clearRecentSearches = useCallback(() => {
     setRecentSearches([]);
     writeLocal(storageKey("searches", userId), []);
@@ -300,6 +315,7 @@ export function UserStateProvider({ children }: { children: React.ReactNode }) {
         isInFavorites: favoritesOps.has,
         recentSearches,
         addRecentSearch,
+        removeRecentSearch,
         clearRecentSearches,
         hydrated,
       }}

@@ -27,7 +27,7 @@ export default function MyListPage() {
   ];
 
   return (
-    <main className="min-h-screen pt-24 px-6 md:px-10 lg:px-14 max-w-[1600px] mx-auto">
+    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-6 md:px-10 lg:px-14 max-w-[1600px] mx-auto" style={{ paddingTop: "120px", paddingBottom: "100px", paddingLeft: "40px", paddingRight: "40px" }}>
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">
@@ -51,7 +51,7 @@ export default function MyListPage() {
       </div>
 
       {/* List Switcher */}
-      <div className="flex rounded-full bg-white/5 border border-white/10 p-1 w-fit mb-6">
+      <div className="flex rounded-full bg-white/5 border border-white/10 p-1 w-fit mb-6" style={{ padding: "4px", marginBottom: "24px" }}>
         {([
           { key: "watchlist", label: "My List" },
           { key: "favorites", label: "Favorites" },
@@ -64,6 +64,7 @@ export default function MyListPage() {
                 ? "bg-[var(--accent-primary)] text-black"
                 : "text-[var(--text-secondary)] hover:text-white"
             }`}
+            style={{ padding: "8px 20px" }}
           >
             {opt.label}
             <span className="ml-2 text-[10px] opacity-70">
@@ -75,7 +76,7 @@ export default function MyListPage() {
 
       {/* Filter Tabs */}
       {activeItems.length > 0 && (
-        <div className="flex gap-2 mb-8">
+        <div className="flex gap-2 mb-8" style={{ gap: "8px", marginBottom: "32px" }}>
           {filters.map((f) => (
             <button
               key={f.key}
@@ -85,6 +86,7 @@ export default function MyListPage() {
                   ? "bg-[var(--accent-primary)] text-black font-bold shadow-[0_0_12px_var(--accent-glow)]"
                   : "glass-panel text-[var(--text-secondary)] hover:text-white hover:bg-white/10"
               }`}
+              style={{ padding: "8px 16px" }}
             >
               {f.label}
             </button>
@@ -94,7 +96,7 @@ export default function MyListPage() {
 
       {/* Grid */}
       {filteredItems.length > 0 ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4 md:gap-6">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4 md:gap-6" style={{ gap: "24px" }}>
           {filteredItems.map((item) => (
             <MediaCard
               key={item.id}
@@ -129,7 +131,7 @@ export default function MyListPage() {
               ? "Start adding movies, series, and anime to your list by clicking the + button on any title."
               : "Tap the heart on any title's watch page to keep your favorites here."}
           </p>
-          <Link href="/" className="btn-primary text-sm px-6 py-2.5">
+          <Link href="/" className="btn-primary">
             Browse Content
           </Link>
         </div>
