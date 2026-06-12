@@ -45,6 +45,13 @@ flutter pub get
 flutter run
 ```
 
+## 📝 Recent Updates
+- Bypassed Tailwind CSS compilation bugs causing missing padding/margin classes using targeted inline styles.
+- Fully polished Watch Party UI (Invite Modal, Settings Modal, Chat Panel, Video Controls).
+- Fixed overlapping layouts on the Profile Page, My List Page, and Global Search overlay.
+- Corrected Hero Section layout bugs for excessively long cinematic titles on the Details page.
+- Created granular commits separating changes by component architecture.
+
 ## 📋 Features (WIP)
 - [x] Cross-platform architecture scaffolded
 - [x] Premium Dark-themed Glassmorphic UI initialized
