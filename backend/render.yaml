@@ -1,0 +1,34 @@
+# Render Blueprint for the PureVerse backend (Express + Socket.io).
+# In the Render dashboard: New → Blueprint → point at this repo.
+# Render reads this file; set the secret env vars (marked sync:false) in the UI.
+#
+# NOTE ON PERSISTENCE: the backend stores users/sessions/history in
+# backend/data/db.json. Render's free instances have an EPHEMERAL filesystem,
+# so that file resets on every deploy/restart (and the instance sleeps after
+# ~15 min idle). For durable data, upgrade to a paid instance and attach a
+# persistent disk mounted at the data directory (see the commented `disk:`
+# block below), or migrate the JSON store to a managed database later.
+
+services:
+  - type: web
+    name: pureverse-backend
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/party/rooms
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: TMDB_ACCESS_TOKEN
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: SCRAPER_PROXY_URL
+        sync: false
+    # Uncomment on a paid plan to persist users/sessions across deploys:
+    # disk:
+    #   name: pureverse-data
+    #   mountPath: /opt/render/project/src/backend/data
+    #   sizeGB: 1
