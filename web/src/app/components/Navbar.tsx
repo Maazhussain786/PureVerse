@@ -8,7 +8,7 @@ import { useUserState } from "./UserStateContext";
 import { useNotifications } from "./NotificationContext";
 import NotificationCenter from "./NotificationCenter";
 import { defaultAvatar } from "../lib/avatars";
-import { API_BASE } from "../lib/api";
+import { API_BASE, proxyImage } from "../lib/api";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -18,9 +18,31 @@ const NAV_LINKS = [
   { href: "/party", label: "Party" },
 ];
 
+type SearchCat = "all" | "movie" | "tv" | "anime";
+
+const SEARCH_CATS: { key: SearchCat; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "movie", label: "Movies" },
+  { key: "tv", label: "Series" },
+  { key: "anime", label: "Anime" },
+];
+
+function searchTypeLabel(type: string): string {
+  if (type === "movie") return "Movie";
+  if (type === "tv") return "Series";
+  if (type === "anime") return "Anime";
+  return type;
+}
+
+function ratingTone(rating: number): string {
+  if (rating >= 7) return "rating-high";
+  if (rating >= 5) return "rating-mid";
+  return "rating-low";
+}
+
 export default function Navbar() {
   const { user, isSignedIn, signIn, signOut } = useAuth();
-  const { recentSearches, addRecentSearch } = useUserState();
+  const { recentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } = useUserState();
   const { unreadCount } = useNotifications();
   const router = useRouter();
   const pathname = usePathname();
@@ -30,6 +52,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchCat, setSearchCat] = useState<SearchCat>("all");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [trending, setTrending] = useState<any[]>([]);
@@ -37,6 +60,7 @@ export default function Navbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -75,14 +99,22 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Lazy-load trending suggestions when the overlay opens
+  // Lazy-load rich trending suggestions when the overlay opens
   useEffect(() => {
     if (!searchOpen || trending.length > 0) return;
-    fetch(`${API_BASE}/search/trending`)
+    fetch(`${API_BASE}/trending`)
       .then((r) => r.json())
-      .then((j) => setTrending(j.data || []))
+      .then((j) => setTrending((j.data || []).slice(0, 12)))
       .catch(() => {});
   }, [searchOpen, trending.length]);
+
+  // Auto-focus the input each time the overlay opens
+  useEffect(() => {
+    if (searchOpen) {
+      const t = setTimeout(() => searchInputRef.current?.focus(), 60);
+      return () => clearTimeout(t);
+    }
+  }, [searchOpen]);
 
   // Live search (fast suggest endpoint)
   useEffect(() => {
@@ -94,7 +126,7 @@ export default function Navbar() {
     setIsSearching(true);
     const timeoutId = setTimeout(async () => {
       try {
-        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(searchQuery.trim())}&limit=10`);
+        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(searchQuery.trim())}&limit=18`);
         if (res.ok) {
           const json = await res.json();
           setSearchResults(json.data || []);
@@ -111,7 +143,24 @@ export default function Navbar() {
   const closeSearch = () => {
     setSearchOpen(false);
     setSearchQuery("");
+    setSearchCat("all");
   };
+
+  // Live results filtered by the active category tab
+  const catCounts = searchResults.reduce(
+    (acc, r) => {
+      acc.all++;
+      if (r.type === "movie") acc.movie++;
+      else if (r.type === "tv") acc.tv++;
+      else if (r.type === "anime") acc.anime++;
+      return acc;
+    },
+    { all: 0, movie: 0, tv: 0, anime: 0 } as Record<SearchCat, number>
+  );
+  const visibleResults =
+    searchCat === "all" ? searchResults : searchResults.filter((r) => r.type === searchCat);
+  const visibleTrending =
+    searchCat === "all" ? trending : trending.filter((t) => t.type === searchCat);
 
   const handleSearchSubmit = (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
@@ -168,24 +217,24 @@ export default function Navbar() {
           </div>
 
           {/* Right Side: Icons + Profile */}
-          <div className="flex items-center gap-1.5 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
             {/* Search */}
             <button
               onClick={() => setSearchOpen(true)}
-              className="p-2 text-[var(--text-secondary)] hover:text-white transition-colors"
               aria-label="Search (Ctrl+K)"
+              className="relative p-2 flex items-center justify-center text-[var(--text-secondary)] hover:text-white transition-colors"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8" />
                 <path d="m21 21-4.3-4.3" />
               </svg>
             </button>
 
             {/* Notifications */}
-            <div className="relative" ref={notifRef}>
+            <div className="relative flex items-center justify-center" ref={notifRef}>
               <button
                 onClick={() => setNotifOpen((v) => !v)}
-                className={`relative p-2 transition-colors ${notifOpen ? "text-white" : "text-[var(--text-secondary)] hover:text-white"}`}
+                className={`relative p-2 flex items-center justify-center transition-colors ${notifOpen ? "text-white" : "text-[var(--text-secondary)] hover:text-white"}`}
                 aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -202,15 +251,15 @@ export default function Navbar() {
             </div>
 
             {/* User Profile / Sign In */}
-            <div className="relative" ref={profileRef}>
+            <div className="relative flex items-center justify-center" ref={profileRef}>
               {isSignedIn ? (
                 <button
                   onClick={() => setProfileOpen(!profileOpen)}
-                  className="w-9 h-9 rounded-full overflow-hidden border-2 border-transparent hover:border-[var(--accent-primary)]/40 transition-all shadow-[0_0_10px_var(--accent-subtle)]"
+                  className="w-9 h-9 flex items-center justify-center rounded-full overflow-hidden border-2 border-transparent hover:border-[var(--accent-primary)]/40 transition-all shadow-[0_0_10px_var(--accent-subtle)]"
                   aria-label="Profile menu"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={avatarSrc} alt={user?.name || "Profile"} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                  <img src={avatarSrc} alt={user?.name || "Profile"} referrerPolicy="no-referrer" className="w-full h-full object-cover block" />
                 </button>
               ) : (
                 <button
@@ -293,18 +342,23 @@ export default function Navbar() {
 
       {/* ─── Search Overlay ─── */}
       {searchOpen && (
-        <div className="search-overlay fixed inset-0 z-[60] flex items-start justify-center pt-[8vh] animate-fade-in bg-black/80 backdrop-blur-sm">
+        <div className="search-overlay fixed inset-0 z-[60] flex items-start justify-center pt-[9vh] px-4 animate-fade-in">
           <div className="absolute inset-0" onClick={closeSearch} />
-          <div className={`relative w-full transition-all duration-500 ${searchQuery ? "max-w-5xl" : "max-w-2xl"} mx-4 sm:mx-6 animate-fade-in-up`}>
-            <div className="bg-[var(--bg-card)] rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.8)] border border-white/10 flex flex-col max-h-[80vh]">
+          <div className="relative w-full max-w-2xl animate-scale-in">
+            <div className="bg-[var(--bg-card)]/95 backdrop-blur-2xl rounded-2xl overflow-hidden shadow-[0_30px_90px_rgba(0,0,0,0.85)] border border-white/10 flex flex-col max-h-[80vh]">
               {/* Input area */}
               <form onSubmit={handleSearchSubmit} className="flex-shrink-0">
-                <div className="flex items-center px-5 sm:px-6 py-4 sm:py-5 gap-4">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2.5">
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="m21 21-4.3-4.3" />
-                  </svg>
+                <div className="flex items-center px-5 sm:px-6 h-[68px] gap-3.5" style={{ gap: "14px", paddingLeft: "24px", paddingRight: "24px" }}>
+                  {isSearching ? (
+                    <div className="w-[22px] h-[22px] border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                  ) : (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2.5" className="flex-shrink-0">
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.3-4.3" />
+                    </svg>
+                  )}
                   <input
+                    ref={searchInputRef}
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -312,116 +366,220 @@ export default function Navbar() {
                     className="flex-1 bg-transparent text-base sm:text-lg text-white placeholder:text-[var(--text-muted)] outline-none min-w-0"
                     autoFocus
                   />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearchQuery(""); searchInputRef.current?.focus(); }}
+                      className="p-1.5 rounded-full text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+                      aria-label="Clear search"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M18 6 6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={closeSearch}
-                    className="text-xs font-mono text-[var(--text-muted)] border border-white/10 rounded px-2 py-1 hover:text-white transition-colors bg-white/5"
+                    className="hidden sm:block text-[10px] font-mono font-bold text-[var(--text-muted)] border border-white/10 rounded-md px-2 py-1 hover:text-white transition-colors bg-white/5 flex-shrink-0"
+                    style={{ padding: "4px 8px" }}
                   >
                     ESC
                   </button>
                 </div>
               </form>
 
-              {/* Idle: recent + trending */}
-              {!searchQuery && (recentSearches.length > 0 || trending.length > 0) && (
-                <div className="px-5 sm:px-6 pb-6 pt-1 border-t border-white/5 overflow-y-auto custom-scrollbar">
-                  {recentSearches.length > 0 && (
-                    <div className="mt-4">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2.5">Recent</p>
-                      <div className="flex flex-wrap gap-2">
-                        {recentSearches.slice(0, 6).map((s) => (
-                          <button
-                            key={s}
-                            onClick={() => setSearchQuery(s)}
-                            className="px-3.5 py-1.5 rounded-full text-xs text-[var(--text-secondary)] bg-white/[0.05] border border-white/10 hover:text-white hover:border-[var(--accent-primary)]/40 transition-all"
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {trending.length > 0 && (
-                    <div className="mt-5">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2.5">Trending</p>
-                      <div className="flex flex-wrap gap-2">
-                        {trending.slice(0, 8).map((t) => (
-                          <button
-                            key={t.id}
-                            onClick={() => setSearchQuery(t.title)}
-                            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs text-[var(--text-secondary)] bg-white/[0.05] border border-white/10 hover:text-white hover:border-[var(--accent-teal)]/40 transition-all"
-                          >
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--accent-teal)" strokeWidth="2.5">
-                              <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                              <polyline points="16 7 22 7 22 13" />
-                            </svg>
-                            {t.title}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Category tabs */}
+              <div className="flex items-center gap-1.5 px-4 sm:px-5 pb-3 pt-0.5 border-b border-white/[0.06] overflow-x-auto hide-scrollbar flex-shrink-0" style={{ gap: "6px", paddingLeft: "20px", paddingRight: "20px", paddingBottom: "12px", paddingTop: "2px" }}>
+                {SEARCH_CATS.map((c) => {
+                  const active = searchCat === c.key;
+                  const count = searchQuery ? catCounts[c.key] : 0;
+                  return (
+                    <button
+                      key={c.key}
+                      type="button"
+                      onClick={() => setSearchCat(c.key)}
+                      className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 h-8 rounded-full text-[13px] font-semibold transition-all ${
+                        active
+                          ? "bg-[var(--accent-primary)] text-[#04130d] shadow-[0_0_14px_var(--accent-glow)]"
+                          : "bg-white/[0.05] text-[var(--text-secondary)] border border-white/10 hover:text-white"
+                      }`}
+                      style={{ padding: "0 14px", gap: "6px" }}
+                    >
+                      {c.label}
+                      {searchQuery && (
+                        <span className={`text-[10px] font-bold px-1.5 py-px rounded-full ${active ? "bg-black/20 text-[#04130d]" : "bg-white/10 text-[var(--text-muted)]"}`} style={{ padding: "1px 6px" }}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
 
-              {/* Results */}
-              {searchQuery && (
-                <div className="flex-1 overflow-y-auto p-5 sm:p-6 bg-black/40 border-t border-white/5 custom-scrollbar">
-                  {isSearching && searchResults.length === 0 ? (
-                    <div className="flex justify-center items-center h-40">
-                      <div className="w-8 h-8 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
+              {/* ── Body ── */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4" style={{ padding: "16px" }}>
+                {/* Query → live suggestions */}
+                {searchQuery ? (
+                  isSearching && searchResults.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-44 gap-3">
+                      <div className="w-7 h-7 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs text-[var(--text-muted)]">Searching…</p>
                     </div>
-                  ) : searchResults.length > 0 ? (
+                  ) : visibleResults.length > 0 ? (
                     <>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                        {searchResults.slice(0, 10).map((item) => (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1" style={{ gap: "4px" }}>
+                        {visibleResults.slice(0, 12).map((item) => (
                           <Link
-                            key={item.id}
+                            key={`${item.type}-${item.id}`}
                             href={`/details/${item.type}/${item.id}`}
-                            onClick={() => { addRecentSearch(searchQuery.trim()); closeSearch(); }}
+                            onClick={() => { if (searchQuery.trim()) addRecentSearch(searchQuery.trim()); closeSearch(); }}
+                            className="group flex items-center gap-3.5 p-2.5 rounded-xl border border-transparent hover:bg-white/[0.05] hover:border-white/10 transition-all"
+                            style={{ padding: "10px", gap: "14px" }}
                           >
-                            <div className="group relative aspect-[2/3] rounded-lg overflow-hidden bg-[var(--bg-card)] shadow-lg transition-transform hover:scale-105 hover:shadow-[0_0_20px_var(--accent-subtle)]">
+                            <div className="relative w-[46px] h-[66px] rounded-lg overflow-hidden bg-[var(--bg-elevated)] flex-shrink-0 ring-1 ring-white/10">
                               {item.posterUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img src={item.posterUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
+                                <img src={proxyImage(item.posterUrl)} alt="" className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                               ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center text-[var(--text-muted)] bg-white/5 p-4 text-center">
-                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mb-2 opacity-50">
-                                    <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                                    <circle cx="8.5" cy="8.5" r="1.5" />
-                                    <polyline points="21 15 16 10 5 21" />
+                                <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="opacity-40">
+                                    <rect width="18" height="18" x="3" y="3" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21" />
                                   </svg>
                                 </div>
                               )}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
-                                <h4 className="text-white text-sm font-bold truncate">{item.title}</h4>
-                                <span className="text-[10px] text-[var(--accent-primary)] uppercase font-semibold mt-1">{item.type}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-semibold text-white truncate group-hover:text-[var(--accent-primary)] transition-colors">{item.title}</h4>
+                              <div className="flex items-center gap-2 mt-1.5 text-xs text-[var(--text-secondary)]">
+                                {item.rating > 0 && (
+                                  <span className={`flex items-center gap-1 font-semibold ${ratingTone(item.rating)}`}>
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                                    {item.rating.toFixed(1)}
+                                  </span>
+                                )}
+                                {item.releaseYear > 0 && <span>{item.releaseYear}</span>}
+                                <span className={`type-pill type-pill-${item.type}`}>{searchTypeLabel(item.type)}</span>
                               </div>
                             </div>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[var(--text-muted)] opacity-0 group-hover:opacity-100 group-hover:text-[var(--accent-primary)] transition-all flex-shrink-0">
+                              <path d="m9 18 6-6-6-6" />
+                            </svg>
                           </Link>
                         ))}
                       </div>
-
-                      <div className="mt-8 text-center pb-2">
-                        <button
-                          onClick={handleSearchSubmit}
-                          className="text-sm font-semibold text-[var(--accent-primary)] hover:text-[var(--accent-hover)] transition-colors py-2 px-4 rounded-full border border-[var(--accent-primary)]/30 hover:bg-[var(--accent-primary)]/10"
-                        >
-                          Open full search with filters &rarr;
-                        </button>
-                      </div>
+                      <button
+                        onClick={handleSearchSubmit}
+                        className="w-full mt-2 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-[var(--accent-primary)] hover:bg-[var(--accent-primary)]/10 transition-colors"
+                        style={{ padding: "12px", gap: "8px", marginTop: "8px" }}
+                      >
+                        See all results for “{searchQuery.trim()}”
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m9 18 6-6-6-6" /></svg>
+                      </button>
                     </>
                   ) : !isSearching ? (
-                    <div className="text-center text-[var(--text-muted)] py-12">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="mx-auto mb-4 opacity-50">
-                        <circle cx="11" cy="11" r="8" />
-                        <path d="m21 21-4.3-4.3" />
-                      </svg>
-                      <p className="text-lg">No results found for &quot;{searchQuery}&quot;</p>
+                    <div className="flex flex-col items-center text-center py-14 px-6" style={{ padding: "56px 24px" }}>
+                      <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5">
+                          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                        </svg>
+                      </div>
+                      <p className="text-sm font-semibold text-white mb-1">No {searchCat !== "all" ? `${searchTypeLabel(searchCat).toLowerCase()} ` : ""}matches for “{searchQuery.trim()}”</p>
+                      <p className="text-xs text-[var(--text-muted)] max-w-xs">Check the spelling{searchCat !== "all" ? ", switch category," : ""} or try a different title.</p>
                     </div>
-                  ) : null}
-                </div>
-              )}
+                  ) : null
+                ) : (
+                  /* ── Idle: recent + trending ── */
+                  <div className="space-y-5 py-1">
+                    {recentSearches.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between px-1.5 mb-2">
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Recent searches</p>
+                          <button onClick={clearRecentSearches} className="text-[11px] font-semibold text-[var(--text-muted)] hover:text-red-400 transition-colors">
+                            Clear all
+                          </button>
+                        </div>
+                        <div className="flex flex-col">
+                          {recentSearches.slice(0, 6).map((s) => (
+                            <div key={s} className="group flex items-center gap-3 px-2.5 py-2 rounded-xl hover:bg-white/[0.05] transition-colors" style={{ padding: "8px 10px", gap: "12px" }}>
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[var(--text-muted)] flex-shrink-0">
+                                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                              </svg>
+                              <button
+                                onClick={() => { setSearchQuery(s); searchInputRef.current?.focus(); }}
+                                className="flex-1 text-left text-sm text-[var(--text-secondary)] group-hover:text-white truncate transition-colors"
+                              >
+                                {s}
+                              </button>
+                              <button
+                                onClick={() => removeRecentSearch(s)}
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                                aria-label={`Remove ${s} from recent searches`}
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {visibleTrending.length > 0 ? (
+                      <div>
+                        <p className="flex items-center gap-1.5 px-1.5 mb-2 text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-teal)" strokeWidth="2.5">
+                            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" />
+                          </svg>
+                          Trending now
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1" style={{ gap: "4px" }}>
+                          {visibleTrending.slice(0, 8).map((item) => (
+                            <Link
+                              key={`${item.type}-${item.id}`}
+                              href={`/details/${item.type}/${item.id}`}
+                              onClick={closeSearch}
+                              className="group flex items-center gap-3.5 p-2.5 rounded-xl border border-transparent hover:bg-white/[0.05] hover:border-white/10 transition-all"
+                              style={{ padding: "10px", gap: "14px" }}
+                            >
+                              <div className="relative w-[46px] h-[66px] rounded-lg overflow-hidden bg-[var(--bg-elevated)] flex-shrink-0 ring-1 ring-white/10">
+                                {item.posterUrl && (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={proxyImage(item.posterUrl)} alt="" className="w-full h-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-semibold text-white truncate group-hover:text-[var(--accent-primary)] transition-colors">{item.title}</h4>
+                                <div className="flex items-center gap-2 mt-1.5 text-xs text-[var(--text-secondary)]">
+                                  {item.rating > 0 && (
+                                    <span className={`flex items-center gap-1 font-semibold ${ratingTone(item.rating)}`}>
+                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                                      {item.rating.toFixed(1)}
+                                    </span>
+                                  )}
+                                  {item.releaseYear > 0 && <span>{item.releaseYear}</span>}
+                                  <span className={`type-pill type-pill-${item.type}`}>{searchTypeLabel(item.type)}</span>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      recentSearches.length === 0 && (
+                        <div className="flex flex-col items-center text-center py-14 px-6" style={{ padding: "56px 24px" }}>
+                          <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="1.5">
+                              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+                            </svg>
+                          </div>
+                          <p className="text-sm font-semibold text-white mb-1">Find your next watch</p>
+                          <p className="text-xs text-[var(--text-muted)] max-w-xs">Search across movies, series and anime — or pick a category above to narrow it down.</p>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
