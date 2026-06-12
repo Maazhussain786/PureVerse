@@ -108,7 +108,7 @@ export default function NotificationCenter({ onClose }: { onClose: () => void })
             </p>
             <button
               onClick={() => { onClose(); signIn(); }}
-              className="btn-primary text-xs px-6 py-2"
+              className="btn-primary btn-sm"
             >
               Sign In
             </button>

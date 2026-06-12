@@ -148,6 +148,12 @@ export default function HeroSection({ items }: HeroSectionProps) {
       <div className="absolute inset-x-0 top-0 h-28 z-[2] bg-gradient-to-b from-black/45 to-transparent" />
 
       {/* ─── Foreground Content ─── */}
+      <style>{`
+        @keyframes fillProgress {
+          0% { transform: scaleX(0); }
+          100% { transform: scaleX(1); }
+        }
+      `}</style>
       <div className="absolute inset-0 z-[3] flex items-end">
         <div className="w-full max-w-[1600px] mx-auto px-5 sm:px-8 lg:px-16 xl:px-20 pb-14 sm:pb-16 md:pb-24 flex items-end justify-between gap-8">
           {/* Left: Featured details */}
@@ -216,12 +222,11 @@ export default function HeroSection({ items }: HeroSectionProps) {
             </p>
 
             {/* ─── Premium CTA Buttons ─── */}
-            <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-2" style={{ marginTop: '2rem' }}>
+            <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-8">
               <Link
                 href={`/watch/${item.type}/${item.id}`}
                 aria-label={`Watch ${item.title}`}
-                className="group/play inline-flex items-center justify-center gap-2.5 h-12 md:h-14 rounded-xl bg-white text-black font-bold text-[15px] md:text-base shadow-lg transition-all duration-300 hover:bg-[#e6e6e6] hover:scale-[1.02] active:scale-[0.98]"
-                style={{ paddingLeft: '1.75rem', paddingRight: '1.75rem' }}
+                className="group/play inline-flex items-center justify-center gap-2 md:gap-2.5 h-10 md:h-[46px] px-6 md:px-8 min-w-[140px] md:min-w-[160px] rounded-md bg-white text-black font-semibold text-[15px] md:text-base shadow-md transition-all hover:bg-white/90 active:scale-[0.98]"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -236,8 +241,7 @@ export default function HeroSection({ items }: HeroSectionProps) {
               <Link
                 href={`/details/${item.type}/${item.id}`}
                 aria-label={`Details about ${item.title}`}
-                className="inline-flex items-center justify-center gap-2 h-12 md:h-14 rounded-xl bg-white/[0.12] text-white font-semibold text-[15px] md:text-base backdrop-blur-md border border-white/20 shadow-lg transition-all duration-300 hover:bg-white/[0.2] hover:border-white/30 hover:scale-[1.02] active:scale-[0.98]"
-                style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
+                className="inline-flex items-center justify-center gap-2 md:gap-2.5 h-10 md:h-[46px] px-6 md:px-8 min-w-[140px] md:min-w-[160px] rounded-md bg-[#6d6d6e]/70 text-white font-semibold text-[15px] md:text-base backdrop-blur-md transition-all hover:bg-[#6d6d6e]/50 active:scale-[0.98]"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -257,46 +261,69 @@ export default function HeroSection({ items }: HeroSectionProps) {
             </div>
           </div>
 
-          {/* Right: "Up Next" floating glass panel (desktop) */}
-          <div className="hidden lg:block glass-panel rounded-2xl p-5 shadow-[0_12px_50px_rgba(0,0,0,0.55)]">
-            <div className="flex items-center justify-between gap-8 mb-4 px-0.5">
-              <span className="text-xs font-bold uppercase tracking-[0.18em] text-white/90">
-                Up Next
-              </span>
-              <span className="text-xs font-mono text-[var(--text-muted)]">
-                <span className="text-[var(--accent-primary)] font-bold">{String(activeIndex + 1).padStart(2, "0")}</span>
-                <span className="mx-0.5">/</span>
-                {String(heroItems.length).padStart(2, "0")}
-              </span>
-            </div>
-            <div className="flex items-end gap-3">
-              {heroItems.map((slide, i) => {
-                const posterSrc = proxyImage(slide.posterUrl || slide.bannerUrl || "");
-                const active = i === activeIndex;
-                return (
-                  <button
-                    key={slide.id}
-                    onClick={() => goToSlide(i)}
-                    aria-label={`Show ${slide.title}`}
-                    className={`relative h-[120px] rounded-xl overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                      active
-                        ? "w-[86px] ring-2 ring-[var(--accent-primary)] shadow-[0_0_22px_var(--accent-glow)]"
-                        : "w-[56px] ring-1 ring-white/10 opacity-55 hover:opacity-100 hover:ring-white/30"
-                    }`}
-                  >
-                    {posterSrc ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={posterSrc} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      <div className="w-full h-full bg-[var(--bg-card)]" />
-                    )}
-                    {/* active progress bar (auto-advance timer cue) */}
-                    {active && (
-                      <span className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--accent-primary)] shadow-[0_0_8px_var(--accent-glow)]" />
-                    )}
-                  </button>
-                );
-              })}
+          {/* Right: "Up Next" floating panel (desktop) */}
+          <div className="hidden lg:block relative z-10 animate-fade-in">
+            <div className="flex flex-col gap-5 w-max">
+
+
+              {/* Thumbnails */}
+              <div className="flex items-end gap-4 h-[180px]">
+                {heroItems.map((slide, i) => {
+                  const posterSrc = proxyImage(slide.posterUrl || slide.bannerUrl || "");
+                  const active = i === activeIndex;
+                  return (
+                    <button
+                      key={slide.id}
+                      onClick={() => goToSlide(i)}
+                      aria-label={`Show ${slide.title}`}
+                      className={`group relative rounded-2xl overflow-hidden transition-all duration-[800ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] transform-gpu origin-bottom ${
+                        active
+                          ? "w-[120px] h-[180px] ring-[2.5px] ring-[var(--accent-primary)] shadow-[0_10px_40px_rgba(0,0,0,0.6),0_0_25px_var(--accent-glow)] z-10"
+                          : "w-[75px] h-[115px] ring-1 ring-white/10 opacity-60 hover:opacity-100 hover:ring-white/40 hover:-translate-y-2 hover:shadow-xl z-0"
+                      }`}
+                    >
+                      {posterSrc ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img 
+                          src={posterSrc} 
+                          alt="" 
+                          className={`w-full h-full object-cover transition-transform duration-[1.5s] ease-out ${active ? 'scale-100' : 'scale-105 group-hover:scale-110'}`} 
+                          referrerPolicy="no-referrer" 
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-[var(--bg-card)]" />
+                      )}
+
+                      {/* Dimming for inactive */}
+                      {!active && (
+                        <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-colors duration-500" />
+                      )}
+
+                      {/* Active item styling */}
+                      {active && (
+                        <>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+                          <div className="absolute bottom-4 left-0 right-0 px-3 text-center">
+                            <span className="block text-[11px] font-bold text-white truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                              {slide.title}
+                            </span>
+                          </div>
+                          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black">
+                            <div 
+                              key={activeIndex}
+                              className="h-full bg-[var(--accent-primary)] shadow-[0_0_12px_var(--accent-glow)]"
+                              style={{ 
+                                animation: 'fillProgress 8000ms linear forwards',
+                                transformOrigin: 'left'
+                              }}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

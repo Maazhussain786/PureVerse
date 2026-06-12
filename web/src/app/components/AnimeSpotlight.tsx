@@ -35,8 +35,8 @@ export default function AnimeSpotlight({ item }: { item?: SpotlightItem }) {
   const poster = proxyImage(item.posterUrl || item.bannerUrl || "");
 
   return (
-    <section className="mb-10">
-      <div className="flex items-center gap-3 mb-5 px-1">
+    <section style={{ marginBottom: "6rem" }}>
+      <div className="flex items-center gap-3 mb-5 px-5">
         <div className="w-7 h-7 rounded-lg bg-[var(--accent-teal-subtle)] flex items-center justify-center">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
@@ -50,13 +50,13 @@ export default function AnimeSpotlight({ item }: { item?: SpotlightItem }) {
 
       <div className="relative overflow-hidden rounded-2xl ring-1 ring-white/10 group">
         {/* Backdrop */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-black">
           {banner ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={banner}
               alt=""
-              className="w-full h-full object-cover object-top transition-transform duration-[1.6s] ease-out group-hover:scale-105"
+              className="w-full h-full object-cover object-top transition-transform duration-[1.6s] ease-out group-hover:scale-105 opacity-80 blur-[0px] scale-110"
               referrerPolicy="no-referrer"
             />
           ) : (
@@ -74,18 +74,22 @@ export default function AnimeSpotlight({ item }: { item?: SpotlightItem }) {
         <div className="absolute inset-y-0 left-0 w-[3px] bg-[var(--accent-teal)] shadow-[0_0_24px_var(--accent-teal-glow)]" />
 
         {/* Content */}
-        <div className="relative z-10 flex items-center gap-6 md:gap-8 p-6 md:p-9 lg:p-11 min-h-[300px] md:min-h-[360px]">
+        <div
+          className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-start gap-6 sm:gap-8 md:gap-12 lg:gap-16 py-8 min-h-[300px] md:min-h-[360px]"
+          style={{ paddingLeft: "60px", paddingRight: "40px" }}
+        >
           {poster && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={poster}
               alt={item.title}
-              className="hidden md:block w-[140px] lg:w-[160px] aspect-[2/3] object-cover rounded-xl ring-1 ring-white/15 shadow-[0_12px_40px_rgba(0,0,0,0.6)] flex-shrink-0"
+              className="w-[110px] sm:w-[130px] md:w-[150px] lg:w-[180px] aspect-[2/3] object-cover rounded-xl ring-1 ring-white/15 shadow-[0_15px_40px_rgba(0,0,0,0.8)] flex-shrink-0"
+              style={{ marginLeft: "40px" }}
               referrerPolicy="no-referrer"
             />
           )}
 
-          <div className="max-w-xl">
+          <div className="flex-1 min-w-0 max-w-2xl mt-4 sm:mt-0">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--accent-teal)] mb-3">
               <span className="w-4 h-[2px] rounded-full bg-[var(--accent-teal)]" />
               Featured this week
@@ -122,11 +126,10 @@ export default function AnimeSpotlight({ item }: { item?: SpotlightItem }) {
               {item.synopsis}
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-2" style={{ marginTop: '2rem' }}>
+            <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-8">
               <Link
                 href={`/watch/${item.type}/${item.id}`}
-                className="group/play inline-flex items-center justify-center gap-2.5 h-12 md:h-14 rounded-xl bg-white text-black font-bold text-[15px] md:text-base shadow-lg transition-all duration-300 hover:bg-[#e6e6e6] hover:scale-[1.02] active:scale-[0.98]"
-                style={{ paddingLeft: '1.75rem', paddingRight: '1.75rem' }}
+                className="group/play inline-flex items-center justify-center gap-2 md:gap-2.5 h-10 md:h-[46px] px-6 md:px-8 min-w-[140px] md:min-w-[160px] rounded-md bg-white text-black font-semibold text-[15px] md:text-base shadow-md transition-all hover:bg-white/90 active:scale-[0.98]"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -139,8 +142,7 @@ export default function AnimeSpotlight({ item }: { item?: SpotlightItem }) {
               </Link>
               <Link
                 href={`/details/${item.type}/${item.id}`}
-                className="inline-flex items-center justify-center gap-2 h-12 md:h-14 rounded-xl bg-white/[0.12] text-white font-semibold text-[15px] md:text-base backdrop-blur-md border border-white/20 shadow-lg transition-all duration-300 hover:bg-white/[0.2] hover:border-white/30 hover:scale-[1.02] active:scale-[0.98]"
-                style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
+                className="inline-flex items-center justify-center gap-2 md:gap-2.5 h-10 md:h-[46px] px-6 md:px-8 min-w-[140px] md:min-w-[160px] rounded-md bg-[#6d6d6e]/70 text-white font-semibold text-[15px] md:text-base backdrop-blur-md transition-all hover:bg-[#6d6d6e]/50 active:scale-[0.98]"
               >
                 <svg
                   viewBox="0 0 24 24"

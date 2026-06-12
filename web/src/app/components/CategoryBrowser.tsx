@@ -319,14 +319,15 @@ export default function CategoryBrowser({ category }: { category: Category }) {
       <div className="sticky top-[68px] z-30 bg-[rgba(9,9,12,0.82)] backdrop-blur-2xl backdrop-saturate-150 border-b border-white/[0.05]">
         <div className="max-w-screen-2xl mx-auto px-5 md:px-10 lg:px-16 py-3 flex items-center gap-3">
           {/* Genre chips (drag-scrollable) */}
-          <div ref={chipsRef} className="drag-scroll flex items-center gap-2 overflow-x-auto hide-scrollbar flex-1 min-w-0">
+          <div ref={chipsRef} className="drag-scroll flex items-center gap-3 overflow-x-auto hide-scrollbar flex-1 min-w-0">
             <button
               onClick={() => setActiveGenre(null)}
-              className={`flex-none px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all duration-200 ${
+              className={`flex-none whitespace-nowrap px-5 py-2 rounded-full text-[13px] font-semibold transition-all duration-200 ${
                 activeGenre === null
                   ? "bg-white text-black shadow-[0_4px_18px_rgba(255,255,255,0.25)]"
                   : "bg-white/[0.07] text-[var(--text-secondary)] ring-1 ring-white/10 hover:text-white hover:bg-white/[0.12]"
               }`}
+              style={{ padding: "10px 24px", whiteSpace: "nowrap", minWidth: "max-content" }}
             >
               All
             </button>
@@ -336,11 +337,12 @@ export default function CategoryBrowser({ category }: { category: Category }) {
                 <button
                   key={g.id}
                   onClick={() => setActiveGenre(active ? null : g)}
-                  className={`flex-none px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all duration-200 ${
+                  className={`flex-none whitespace-nowrap px-5 py-2 rounded-full text-[13px] font-semibold transition-all duration-200 ${
                     active
                       ? "bg-[var(--accent-primary)] text-black shadow-[0_0_18px_var(--accent-glow)]"
                       : "bg-white/[0.07] text-[var(--text-secondary)] ring-1 ring-white/10 hover:text-white hover:bg-white/[0.12]"
                   }`}
+                  style={{ padding: "10px 24px", whiteSpace: "nowrap", minWidth: "max-content" }}
                 >
                   {g.label}
                 </button>
