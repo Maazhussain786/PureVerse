@@ -36,6 +36,7 @@ import {
   removeHistory,
   clearHistory,
   addRecentSearch,
+  removeRecentSearch,
   clearRecentSearches,
 } from '../controllers/userController';
 import {
@@ -104,6 +105,7 @@ router.delete('/user/history/:key', requireAuth, removeHistory);
 router.delete('/user/history', requireAuth, clearHistory);
 
 router.post('/user/searches', requireAuth, addRecentSearch);
+router.delete('/user/searches/:q', requireAuth, removeRecentSearch);
 router.delete('/user/searches', requireAuth, clearRecentSearches);
 
 // ─── Notifications ────────────────────────────────────────

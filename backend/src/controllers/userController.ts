@@ -168,6 +168,15 @@ export const addRecentSearch = (req: AuthedRequest, res: Response) => {
   res.json({ success: true, data: user.recentSearches });
 };
 
+// DELETE /api/user/searches/:q — remove one search
+export const removeRecentSearch = (req: AuthedRequest, res: Response) => {
+  const user = req.user!;
+  const q = decodeURIComponent(String(req.params.q)).toLowerCase();
+  user.recentSearches = user.recentSearches.filter((s) => s.toLowerCase() !== q);
+  updateUser(user);
+  res.json({ success: true, data: user.recentSearches });
+};
+
 // DELETE /api/user/searches
 export const clearRecentSearches = (req: AuthedRequest, res: Response) => {
   const user = req.user!;
