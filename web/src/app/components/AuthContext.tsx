@@ -243,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               onClick={() => setModalOpen(false)}
               className="absolute top-4 right-4 p-1.5 rounded-full text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition-colors"
               aria-label="Close"
+              style={{ padding: "6px" }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M18 6 6 18M6 6l12 12" />
@@ -263,20 +264,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               {gisReady ? (
                 <div ref={googleButtonRef} className="flex justify-center min-h-[44px]" />
               ) : (
-                <p className="text-xs text-[var(--text-muted)] px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                <p className="text-xs text-[var(--text-muted)] px-3 py-2 rounded-lg bg-white/5 border border-white/10" style={{ padding: "8px 12px" }}>
                   Google Sign-In unavailable — continue as guest below.
                 </p>
               )}
 
               {/* Divider */}
-              <div className="flex items-center gap-3 w-full my-5">
+              <div className="flex items-center gap-3 w-full my-5" style={{ gap: "12px", marginTop: "20px", marginBottom: "20px" }}>
                 <div className="flex-1 h-px bg-white/10" />
                 <span className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">or</span>
                 <div className="flex-1 h-px bg-white/10" />
               </div>
 
               {/* Guest */}
-              <div className="w-full space-y-3">
+              <div className="w-full space-y-3" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <input
                   type="text"
                   value={guestName}
@@ -285,11 +286,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   placeholder="Display name"
                   maxLength={40}
                   className="w-full px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm text-white placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent-primary)]/50 transition-colors"
+                  style={{ padding: "10px 16px" }}
                 />
                 <button
                   onClick={guestSignIn}
                   disabled={guestBusy}
                   className="w-full py-2.5 rounded-full text-sm font-bold text-black bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] transition-all hover:shadow-[0_0_18px_var(--accent-glow)] disabled:opacity-50"
+                  style={{ padding: "10px", minHeight: "40px" }}
                 >
                   {guestBusy ? "Creating profile…" : "Continue as Guest"}
                 </button>
