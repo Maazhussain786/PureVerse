@@ -396,8 +396,8 @@ function WatchPageInner() {
             </div>
 
             {/* ─── Control strip ─── */}
-            <div className="flex items-center justify-between gap-3 flex-wrap" style={{ marginTop: '16px' }}>
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-3 flex-wrap" style={{ marginTop: '20px', gap: '16px' }}>
+              <div className="flex items-center gap-2" style={{ gap: '12px' }}>
                 {isSeries && (
                   <>
                     <button
@@ -427,7 +427,7 @@ function WatchPageInner() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" style={{ gap: '12px' }}>
                 {isSeries && (
                   <button
                     onClick={toggleAutoplay}
@@ -469,10 +469,10 @@ function WatchPageInner() {
             </div>
 
             {/* ─── Title + actions ─── */}
-            <div className="glass-panel rounded-2xl p-5" style={{ marginTop: '20px' }}>
-              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div className="glass-panel rounded-2xl p-5" style={{ marginTop: '24px', padding: '24px' }}>
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4" style={{ gap: '20px' }}>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap" style={{ gap: '10px', marginBottom: '12px' }}>
                     <span className={`type-pill type-pill-${details?.type || type}`}>
                       {type === "tv" ? "Series" : type === "anime" ? "Anime" : "Movie"}
                     </span>
@@ -493,11 +493,11 @@ function WatchPageInner() {
                       </span>
                     ))}
                   </div>
-                  <h1 className="text-xl md:text-2xl font-bold text-white mb-1" style={{ fontFamily: "var(--font-space)" }}>
+                  <h1 className="text-xl md:text-2xl font-bold text-white mb-1" style={{ fontFamily: "var(--font-space)", marginBottom: '8px' }}>
                     {details?.title || "Now Playing"}
                   </h1>
                   {isSeries && (
-                    <p className="text-sm text-[var(--accent-primary)] font-semibold mb-2">
+                    <p className="text-sm text-[var(--accent-primary)] font-semibold mb-2" style={{ marginBottom: '16px' }}>
                       Season {season} · Episode {episode}
                       {currentEpInfo?.title ? ` — ${currentEpInfo.title}` : ""}
                     </p>
@@ -509,10 +509,11 @@ function WatchPageInner() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap" style={{ gap: '12px', marginTop: '16px' }}>
                   <button
                     onClick={toggleWatchlist}
                     className={`btn-secondary btn-sm ${inWatchlist ? "is-active" : ""}`}
+                    style={{ padding: '10px 16px', gap: '8px', display: 'flex', alignItems: 'center' }}
                   >
                     {inWatchlist ? (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5" /></svg>
@@ -525,20 +526,21 @@ function WatchPageInner() {
                     onClick={toggleFavorite}
                     className={`btn-secondary btn-sm ${inFavorites ? "is-active" : ""}`}
                     title={inFavorites ? "Remove from favorites" : "Add to favorites"}
+                    style={{ padding: '10px 16px', gap: '8px', display: 'flex', alignItems: 'center' }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill={inFavorites ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
                       <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
                     </svg>
                     {inFavorites ? "Favorited" : "Favorite"}
                   </button>
-                  <button onClick={share} className="btn-secondary btn-sm">
+                  <button onClick={share} className="btn-secondary btn-sm" style={{ padding: '10px 16px', gap: '8px', display: 'flex', alignItems: 'center' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
                       <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" /><line x1="15.41" x2="8.59" y1="6.51" y2="10.49" />
                     </svg>
                     {shared ? "Link copied!" : "Share"}
                   </button>
-                  <Link href={`/details/${type}/${id}`} className="btn-secondary btn-sm">
+                  <Link href={`/details/${type}/${id}`} className="btn-secondary btn-sm" style={{ padding: '10px 16px', gap: '8px', display: 'flex', alignItems: 'center' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" />
                     </svg>
@@ -550,9 +552,9 @@ function WatchPageInner() {
 
             {/* ─── Server selector ─── */}
             {streamData && streamData.sources.length > 0 && (
-              <div className="glass-panel rounded-2xl p-5" style={{ marginTop: '20px' }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space)" }}>
+              <div className="glass-panel rounded-2xl p-5" style={{ marginTop: '24px', padding: '24px' }}>
+                <div className="flex items-center justify-between mb-4" style={{ marginBottom: '20px' }}>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space)", gap: '8px' }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2">
                       <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
                       <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
