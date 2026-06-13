@@ -94,14 +94,6 @@ function WatchPageInner() {
     } catch { /* ignore */ }
   };
 
-  const toggleAutoplay = () => {
-    const next = !autoplayNext;
-    setAutoplayNext(next);
-    try {
-      localStorage.setItem("pureverse_autoplay", next ? "1" : "0");
-    } catch { /* ignore */ }
-  };
-
   // ─── Fetch stream sources ───
   useEffect(() => {
     let cancelled = false;
