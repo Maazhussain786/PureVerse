@@ -53,18 +53,10 @@ interface ResultItem {
   genres?: string[];
 }
 
+import LoadingSpinner from "../components/LoadingSpinner";
+
 function SkeletonGrid() {
-  return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4 md:gap-6">
-      {Array.from({ length: 14 }).map((_, i) => (
-        <div key={i}>
-          <div className="skeleton aspect-[2/3] rounded-xl" />
-          <div className="skeleton h-3.5 w-3/4 rounded mt-2.5" />
-          <div className="skeleton h-2.5 w-1/2 rounded mt-1.5" />
-        </div>
-      ))}
-    </div>
-  );
+  return <LoadingSpinner />;
 }
 
 function SearchClient() {

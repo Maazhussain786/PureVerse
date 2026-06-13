@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useUserState, historyKey } from "../UserStateContext";
 import { API_BASE, proxyImage } from "../../lib/api";
+import LoadingSpinner from "../LoadingSpinner";
 
 export interface EpisodeInfo {
   id: string;
@@ -128,17 +129,7 @@ export default function EpisodePanel({
       {/* List */}
       <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
         {loading ? (
-          <div className="p-3 space-y-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex gap-3 p-2">
-                <div className="skeleton w-[104px] aspect-video rounded-lg flex-shrink-0" />
-                <div className="flex-1 space-y-2 py-1">
-                  <div className="skeleton w-12 h-2.5 rounded" />
-                  <div className="skeleton w-4/5 h-3.5 rounded" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <LoadingSpinner />
         ) : episodes.length === 0 ? (
           <p className="text-xs text-[var(--text-muted)] text-center py-10">
             No episodes available for this season.
