@@ -72,12 +72,16 @@ export function save() {
   }, 500);
 }
 
-// Flush pending writes when the process exits cleanly
+// Flush pending writes when the process exits cleanly. SIGTERM is what Docker
+// (and most process managers) send on stop/restart, so handle it alongside
+// SIGINT to avoid losing the last debounced write in a container.
 process.on('beforeExit', () => persistNow());
-process.on('SIGINT', () => {
+const flushAndExit = () => {
   persistNow();
   process.exit(0);
-});
+};
+process.on('SIGINT', flushAndExit);
+process.on('SIGTERM', flushAndExit);
 
 load();
 

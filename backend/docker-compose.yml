@@ -1,0 +1,43 @@
+# PureVerse backend on a DigitalOcean Droplet.
+#   - backend: Express + Socket.io API (JSON store on a persistent bind mount)
+#   - caddy:   reverse proxy with automatic HTTPS (Let's Encrypt)
+#
+# First run:
+#   1. Copy .env.example -> .env and fill it in
+#   2. Edit Caddyfile: replace api.example.com with your real domain
+#   3. docker compose up -d --build
+#
+# Data lives in ./data/db.json on the host and survives rebuilds/restarts.
+
+services:
+  backend:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "5000"
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/api/party/rooms"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+
+volumes:
+  caddy_data:
+  caddy_config:

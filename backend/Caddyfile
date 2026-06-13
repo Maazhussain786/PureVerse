@@ -1,0 +1,11 @@
+# Replace api.example.com with the domain (or DuckDNS subdomain) that points
+# at this Droplet's public IP. Caddy automatically obtains and renews a
+# Let's Encrypt TLS certificate — no manual cert steps.
+#
+# reverse_proxy transparently upgrades WebSocket connections, so Socket.io
+# (watch party) works through it with no extra config.
+
+api.example.com {
+	encode gzip
+	reverse_proxy backend:5000
+}
