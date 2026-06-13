@@ -7,6 +7,7 @@ import { useUserState } from "../../../components/UserStateContext";
 import EpisodeBrowser from "../../../components/EpisodeBrowser";
 import MediaRow from "../../../components/MediaRow";
 import useDragScroll from "../../../hooks/useDragScroll";
+import LoadingSpinner from "../../../components/LoadingSpinner";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
