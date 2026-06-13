@@ -15,6 +15,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to publish the APK as a Release
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,9 +42,21 @@ jobs:
         working-directory: android
         run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK
+      - name: Upload APK (Actions artifact)
         uses: actions/upload-artifact@v4
         with:
           name: PureVerse-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      # Publish the raw .apk to a Release so phones get a direct, login-free,
+      # no-unzip download link: .../releases/latest -> tap app-debug.apk.
+      - name: Publish APK to Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --yes --cleanup-tag || true
+          gh release create android-latest \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            --title "PureVerse APK (latest build)" \
+            --notes "Tap **app-debug.apk** below to install on Android. Enable 'Install unknown apps' when prompted."
