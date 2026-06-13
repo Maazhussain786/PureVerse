@@ -403,8 +403,9 @@ function WatchPageInner() {
                     <button
                       onClick={() => prevEpisode && goToEpisode(prevEpisode.season, prevEpisode.episode)}
                       disabled={!prevEpisode}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/[0.05] border border-white/10 text-[var(--text-secondary)] hover:text-white hover:border-[var(--accent-primary)]/40 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="flex items-center rounded-xl text-xs font-semibold bg-white/[0.05] border border-white/10 text-[var(--text-secondary)] hover:text-white hover:border-[var(--accent-primary)]/40 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                       title="Previous episode (P)"
+                      style={{ gap: '6px', padding: '8px 14px' }}
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20" /><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2" /></svg>
                       Prev
@@ -412,8 +413,9 @@ function WatchPageInner() {
                     <button
                       onClick={() => nextEpisode && goToEpisode(nextEpisode.season, nextEpisode.episode)}
                       disabled={!nextEpisode}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[var(--accent-primary)]/12 border border-[var(--accent-primary)]/30 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:text-black transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="flex items-center rounded-xl text-xs font-bold bg-[var(--accent-primary)]/12 border border-[var(--accent-primary)]/30 text-[var(--accent-primary)] hover:bg-[var(--accent-primary)] hover:text-black transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                       title="Next episode (N)"
+                      style={{ gap: '6px', padding: '8px 14px' }}
                     >
                       Next
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4" /><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2" /></svg>
@@ -431,9 +433,10 @@ function WatchPageInner() {
                 {isSeries && (
                   <button
                     onClick={toggleAutoplay}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-semibold bg-white/[0.04] border border-white/10 text-[var(--text-secondary)] hover:text-white transition-all"
+                    className="flex items-center rounded-xl text-[11px] font-semibold bg-white/[0.04] border border-white/10 text-[var(--text-secondary)] hover:text-white transition-all"
                     role="switch"
                     aria-checked={autoplayNext}
+                    style={{ gap: '8px', padding: '8px 12px' }}
                   >
                     Autoplay
                     <span 
@@ -455,7 +458,8 @@ function WatchPageInner() {
                 )}
                 <button
                   onClick={() => setPartyOpen(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-[var(--accent-primary)]/15 to-[var(--accent-teal)]/15 border border-[var(--accent-teal)]/30 text-[var(--accent-teal)] hover:border-[var(--accent-teal)]/60 hover:shadow-[0_0_16px_var(--accent-teal-glow)] transition-all"
+                  className="flex items-center rounded-xl text-xs font-bold bg-gradient-to-r from-[var(--accent-primary)]/15 to-[var(--accent-teal)]/15 border border-[var(--accent-teal)]/30 text-[var(--accent-teal)] hover:border-[var(--accent-teal)]/60 hover:shadow-[0_0_16px_var(--accent-teal-glow)] transition-all"
+                  style={{ gap: '6px', padding: '8px 14px' }}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -563,9 +567,6 @@ function WatchPageInner() {
                     </svg>
                     Servers
                   </h3>
-                  <span className="text-[10px] text-[var(--text-muted)]">
-                    Blank or “Please Disable Sandbox”? Toggle <span className="text-[var(--accent-primary)] font-semibold">Ad-Block</span> off, or try another server.
-                  </span>
                 </div>
                 <ServerSelector
                   sources={streamData.sources}

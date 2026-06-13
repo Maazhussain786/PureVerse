@@ -145,13 +145,14 @@ export default function EpisodePanel({
                   ref={isActive ? activeRef : undefined}
                   onClick={() => !locked && onSelect(selectedSeason, ep.episodeNumber)}
                   disabled={locked}
-                  className={`w-full flex gap-3 p-2 rounded-xl text-left transition-all duration-200 group ${
+                  className={`w-full flex rounded-xl text-left transition-all duration-200 group ${
                     isActive
                       ? "bg-[var(--accent-primary)]/10 ring-1 ring-[var(--accent-primary)]/40"
                       : locked
                         ? "opacity-50 cursor-not-allowed"
                         : "hover:bg-white/[0.05]"
                   }`}
+                  style={{ gap: '12px', padding: '8px', alignItems: 'center' }}
                 >
                   {/* Thumbnail */}
                   <div className="relative flex-shrink-0 w-[104px] aspect-video rounded-lg overflow-hidden bg-[var(--bg-elevated)]">
@@ -204,9 +205,18 @@ export default function EpisodePanel({
                         <span className="ml-1.5 text-[var(--accent-primary)]">✓ Watched</span>
                       )}
                     </p>
-                    <h4 className={`text-[13px] font-semibold leading-snug mt-0.5 line-clamp-2 ${
-                      isActive ? "text-[var(--accent-primary)]" : "text-white"
-                    }`}>
+                    <h4 
+                      className={`text-[13px] font-semibold mt-0.5 ${
+                        isActive ? "text-[var(--accent-primary)]" : "text-white"
+                      }`}
+                      style={{ 
+                        display: '-webkit-box', 
+                        WebkitLineClamp: 2, 
+                        WebkitBoxOrient: 'vertical', 
+                        overflow: 'hidden',
+                        lineHeight: '1.4'
+                      }}
+                    >
                       {ep.title || `Episode ${ep.episodeNumber}`}
                     </h4>
                   </div>
