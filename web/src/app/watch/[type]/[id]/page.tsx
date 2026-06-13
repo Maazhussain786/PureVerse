@@ -71,7 +71,7 @@ function WatchPageInner() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [seasonEpisodes, setSeasonEpisodes] = useState<EpisodeInfo[]>([]);
   const [autoplayNext, setAutoplayNext] = useState(true);
-  const [blockAds, setBlockAds] = useState(true);
+  const [autoplayNext, setAutoplayNext] = useState(true);
   const [partyOpen, setPartyOpen] = useState(false);
   const [shared, setShared] = useState(false);
   const lastProgressSync = useRef(0);
@@ -95,18 +95,11 @@ function WatchPageInner() {
     } catch { /* ignore */ }
   };
 
-  // ─── Ad-Block preference (localStorage, default ON) ───
-  useEffect(() => {
+  const toggleAutoplay = () => {
+    const next = !autoplayNext;
+    setAutoplayNext(next);
     try {
-      setBlockAds(localStorage.getItem("pureverse_adblock") !== "0");
-    } catch { /* default on */ }
-  }, []);
-
-  const toggleBlockAds = () => {
-    const next = !blockAds;
-    setBlockAds(next);
-    try {
-      localStorage.setItem("pureverse_adblock", next ? "1" : "0");
+      localStorage.setItem("pureverse_autoplay", next ? "1" : "0");
     } catch { /* ignore */ }
   };
 
@@ -383,17 +376,13 @@ function WatchPageInner() {
               {!loading && !error && activeSource && (
                 <>
                   <iframe
-                    // Remount when Ad-Block flips so the sandbox change applies.
-                    key={`${activeSource.url}-${blockAds ? "sb" : "open"}`}
+                    key={`${activeSource.url}-sb`}
                     src={activeSource.url}
                     className="w-full h-full border-none rounded-2xl"
                     allowFullScreen
                     allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                     referrerPolicy="origin"
-                    // When Ad-Block is on, sandbox the embed to kill popup /
-                    // redirect ads. When off (for providers that demand it),
-                    // omit the attribute entirely so the player will load.
-                    sandbox={blockAds ? PLAYER_SANDBOX : undefined}
+                    sandbox={PLAYER_SANDBOX}
                   />
                   {/* Region-blocked iframes render blank without firing
                       onError — the recovery control must always be reachable. */}
@@ -417,7 +406,7 @@ function WatchPageInner() {
             </div>
 
             {/* ─── Control strip ─── */}
-            <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center justify-between gap-3 flex-wrap" style={{ marginTop: '16px' }}>
               <div className="flex items-center gap-2">
                 {isSeries && (
                   <>
@@ -449,25 +438,6 @@ function WatchPageInner() {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleBlockAds}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-semibold border transition-all ${
-                    blockAds
-                      ? "bg-[var(--accent-primary)]/10 border-[var(--accent-primary)]/30 text-[var(--accent-primary)]"
-                      : "bg-white/[0.04] border-white/10 text-[var(--text-secondary)] hover:text-white"
-                  }`}
-                  role="switch"
-                  aria-checked={blockAds}
-                  title="Blocks popup & redirect ads. If a server shows 'Please Disable Sandbox', turn this OFF for that server."
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  </svg>
-                  Ad-Block
-                  <span className={`relative w-8 h-[18px] rounded-full transition-colors ${blockAds ? "bg-[var(--accent-primary)]" : "bg-white/15"}`}>
-                    <span className={`absolute top-0.5 w-[14px] h-[14px] rounded-full bg-white transition-transform ${blockAds ? "translate-x-[16px]" : "translate-x-0.5"}`} />
-                  </span>
-                </button>
                 {isSeries && (
                   <button
                     onClick={toggleAutoplay}
@@ -476,8 +446,20 @@ function WatchPageInner() {
                     aria-checked={autoplayNext}
                   >
                     Autoplay
-                    <span className={`relative w-8 h-[18px] rounded-full transition-colors ${autoplayNext ? "bg-[var(--accent-primary)]" : "bg-white/15"}`}>
-                      <span className={`absolute top-0.5 w-[14px] h-[14px] rounded-full bg-white transition-transform ${autoplayNext ? "translate-x-[16px]" : "translate-x-0.5"}`} />
+                    <span 
+                      className={`relative rounded-full transition-colors ${autoplayNext ? "bg-[var(--accent-primary)]" : "bg-white/15"}`}
+                      style={{ width: '32px', height: '18px' }}
+                    >
+                      <span 
+                        className="absolute rounded-full bg-white transition-transform"
+                        style={{ 
+                          width: '14px', 
+                          height: '14px',
+                          top: '2px',
+                          left: '2px',
+                          transform: autoplayNext ? 'translateX(14px)' : 'translateX(0px)'
+                        }}
+                      />
                     </span>
                   </button>
                 )}
@@ -497,7 +479,7 @@ function WatchPageInner() {
             </div>
 
             {/* ─── Title + actions ─── */}
-            <div className="mt-4 glass-panel rounded-2xl p-5">
+            <div className="glass-panel rounded-2xl p-5" style={{ marginTop: '20px' }}>
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -578,7 +560,7 @@ function WatchPageInner() {
 
             {/* ─── Server selector ─── */}
             {streamData && streamData.sources.length > 0 && (
-              <div className="mt-4 glass-panel rounded-2xl p-5">
+              <div className="glass-panel rounded-2xl p-5" style={{ marginTop: '20px' }}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space)" }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2">
