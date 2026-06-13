@@ -366,6 +366,11 @@ function WatchPageInner() {
                     allowFullScreen
                     allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                     referrerPolicy="origin"
+                    // Ad-block: omitting `allow-popups` and `allow-top-navigation`
+                    // stops embed providers from opening popunder tabs or
+                    // hijacking the page on click/fullscreen. Tokens kept are
+                    // the minimum the players need to run + go fullscreen.
+                    sandbox="allow-same-origin allow-scripts allow-forms allow-presentation allow-orientation-lock allow-pointer-lock"
                   />
                   {/* Region-blocked iframes render blank without firing
                       onError — the recovery control must always be reachable. */}
