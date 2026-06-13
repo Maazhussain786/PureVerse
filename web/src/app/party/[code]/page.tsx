@@ -515,6 +515,8 @@ export default function PartyRoomPage() {
                   allowFullScreen
                   allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                   referrerPolicy="origin"
+                  // Ad-block: blocks popunders / tab-hijack from embed providers.
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-presentation allow-orientation-lock allow-pointer-lock"
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--text-muted)]">
