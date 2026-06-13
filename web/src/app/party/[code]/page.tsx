@@ -68,6 +68,7 @@ export default function PartyRoomPage() {
   const [sources, setSources] = useState<StreamSource[]>([]);
   const [streamLoading, setStreamLoading] = useState(false);
   const [totalSeasons, setTotalSeasons] = useState(0);
+  const [blockAds, setBlockAds] = useState(true);
 
   const [cue, setCue] = useState<{ text: string; icon: "play" | "pause" | "sync" } | null>(null);
   const [tab, setTab] = useState<"chat" | "members" | "episodes">("chat");
@@ -76,6 +77,20 @@ export default function PartyRoomPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [partyClock, setPartyClock] = useState(0);
+
+  // Ad-Block preference shared with the watch page (localStorage, default ON).
+  useEffect(() => {
+    try {
+      setBlockAds(localStorage.getItem("pureverse_adblock") !== "0");
+    } catch { /* default on */ }
+  }, []);
+  const toggleBlockAds = () => {
+    const next = !blockAds;
+    setBlockAds(next);
+    try {
+      localStorage.setItem("pureverse_adblock", next ? "1" : "0");
+    } catch { /* ignore */ }
+  };
 
   const cueTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const passwordRef = useRef("");
@@ -509,19 +524,38 @@ export default function PartyRoomPage() {
                 </div>
               ) : activeSource ? (
                 <iframe
-                  key={activeSource.url}
+                  key={`${activeSource.url}-${blockAds ? "sb" : "open"}`}
                   src={activeSource.url}
                   className="w-full h-full border-none rounded-2xl"
                   allowFullScreen
                   allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                   referrerPolicy="origin"
-                  // Ad-block: blocks popunders / tab-hijack from embed providers.
-                  sandbox="allow-same-origin allow-scripts allow-forms allow-presentation allow-orientation-lock allow-pointer-lock"
+                  // Ad-Block on → sandbox blocks popunders / tab-hijack. Off →
+                  // omit the attribute for providers that demand "Disable Sandbox".
+                  sandbox={blockAds ? "allow-same-origin allow-scripts allow-forms allow-presentation allow-orientation-lock allow-pointer-lock" : undefined}
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-sm text-[var(--text-muted)]">
                   No stream sources available
                 </div>
+              )}
+
+              {/* Ad-Block toggle — escape hatch for "Please Disable Sandbox" */}
+              {activeSource && (
+                <button
+                  onClick={toggleBlockAds}
+                  title="Blocks popup/redirect ads. Turn off if a server shows 'Please Disable Sandbox'."
+                  className={`absolute top-3 right-3 z-20 flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold backdrop-blur-md border transition-all ${
+                    blockAds
+                      ? "bg-black/60 border-[var(--accent-teal)]/40 text-[var(--accent-teal)]"
+                      : "bg-black/60 border-white/15 text-white/70 hover:text-white"
+                  }`}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  Ad-Block {blockAds ? "ON" : "OFF"}
+                </button>
               )}
 
               {/* Host action cue overlay */}

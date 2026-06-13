@@ -34,6 +34,13 @@ interface MediaDetails {
 
 const PREF_SERVER_KEY = (type: string) => `pureverse_server_${type}`;
 
+// Sandbox tokens that let the embed play + go fullscreen while blocking the
+// popup/redirect ads (no allow-popups, no allow-top-navigation). A few
+// ad-heavy providers detect this and show "Please Disable Sandbox" — the
+// Ad-Block toggle removes the attribute for those.
+const PLAYER_SANDBOX =
+  "allow-same-origin allow-scripts allow-forms allow-presentation allow-orientation-lock allow-pointer-lock";
+
 function WatchPageInner() {
   const params = useParams();
   const router = useRouter();
@@ -64,6 +71,7 @@ function WatchPageInner() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [seasonEpisodes, setSeasonEpisodes] = useState<EpisodeInfo[]>([]);
   const [autoplayNext, setAutoplayNext] = useState(true);
+  const [blockAds, setBlockAds] = useState(true);
   const [partyOpen, setPartyOpen] = useState(false);
   const [shared, setShared] = useState(false);
   const lastProgressSync = useRef(0);
@@ -84,6 +92,21 @@ function WatchPageInner() {
     setAutoplayNext(next);
     try {
       localStorage.setItem("pureverse_autoplay", next ? "1" : "0");
+    } catch { /* ignore */ }
+  };
+
+  // ─── Ad-Block preference (localStorage, default ON) ───
+  useEffect(() => {
+    try {
+      setBlockAds(localStorage.getItem("pureverse_adblock") !== "0");
+    } catch { /* default on */ }
+  }, []);
+
+  const toggleBlockAds = () => {
+    const next = !blockAds;
+    setBlockAds(next);
+    try {
+      localStorage.setItem("pureverse_adblock", next ? "1" : "0");
     } catch { /* ignore */ }
   };
 
@@ -360,17 +383,17 @@ function WatchPageInner() {
               {!loading && !error && activeSource && (
                 <>
                   <iframe
-                    key={activeSource.url}
+                    // Remount when Ad-Block flips so the sandbox change applies.
+                    key={`${activeSource.url}-${blockAds ? "sb" : "open"}`}
                     src={activeSource.url}
                     className="w-full h-full border-none rounded-2xl"
                     allowFullScreen
                     allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                     referrerPolicy="origin"
-                    // Ad-block: omitting `allow-popups` and `allow-top-navigation`
-                    // stops embed providers from opening popunder tabs or
-                    // hijacking the page on click/fullscreen. Tokens kept are
-                    // the minimum the players need to run + go fullscreen.
-                    sandbox="allow-same-origin allow-scripts allow-forms allow-presentation allow-orientation-lock allow-pointer-lock"
+                    // When Ad-Block is on, sandbox the embed to kill popup /
+                    // redirect ads. When off (for providers that demand it),
+                    // omit the attribute entirely so the player will load.
+                    sandbox={blockAds ? PLAYER_SANDBOX : undefined}
                   />
                   {/* Region-blocked iframes render blank without firing
                       onError — the recovery control must always be reachable. */}
@@ -426,6 +449,25 @@ function WatchPageInner() {
               </div>
 
               <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleBlockAds}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-semibold border transition-all ${
+                    blockAds
+                      ? "bg-[var(--accent-primary)]/10 border-[var(--accent-primary)]/30 text-[var(--accent-primary)]"
+                      : "bg-white/[0.04] border-white/10 text-[var(--text-secondary)] hover:text-white"
+                  }`}
+                  role="switch"
+                  aria-checked={blockAds}
+                  title="Blocks popup & redirect ads. If a server shows 'Please Disable Sandbox', turn this OFF for that server."
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  Ad-Block
+                  <span className={`relative w-8 h-[18px] rounded-full transition-colors ${blockAds ? "bg-[var(--accent-primary)]" : "bg-white/15"}`}>
+                    <span className={`absolute top-0.5 w-[14px] h-[14px] rounded-full bg-white transition-transform ${blockAds ? "translate-x-[16px]" : "translate-x-0.5"}`} />
+                  </span>
+                </button>
                 {isSeries && (
                   <button
                     onClick={toggleAutoplay}
@@ -548,7 +590,7 @@ function WatchPageInner() {
                     Servers
                   </h3>
                   <span className="text-[10px] text-[var(--text-muted)]">
-                    Blank screen? Some servers are region-blocked — try another.
+                    Blank or “Please Disable Sandbox”? Toggle <span className="text-[var(--accent-primary)] font-semibold">Ad-Block</span> off, or try another server.
                   </span>
                 </div>
                 <ServerSelector
