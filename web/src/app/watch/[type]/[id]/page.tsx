@@ -327,9 +327,9 @@ function WatchPageInner() {
 
   return (
     <main className="min-h-screen bg-[var(--bg-primary)]" style={{ paddingTop: '80px' }}>
-      <div className="w-full max-w-[1700px] mx-auto px-3 md:px-6 pt-3 md:pt-5 pb-12">
+      <div className="watch-layout-container px-3 md:px-6 pt-3 md:pt-5 pb-12">
         {/* ─── Theater: player + episode rail ─── */}
-        <div className={`flex flex-col ${isSeries ? "xl:flex-row" : ""} gap-4`}>
+        <div className={`watch-theater-layout ${isSeries ? "is-series" : ""}`}>
           {/* Player column */}
           <div className="flex-1 min-w-0">
             <div className="relative w-full aspect-video rounded-2xl bg-black ring-1 ring-white/[0.08] shadow-[0_8px_50px_rgba(0,0,0,0.85)]">
@@ -579,8 +579,8 @@ function WatchPageInner() {
 
           {/* ─── Episode rail (desktop) ─── */}
           {isSeries && details && (details.totalSeasons || 0) > 0 && (
-            <aside className="xl:w-[400px] xl:flex-shrink-0">
-              <div className="glass-panel rounded-2xl overflow-hidden xl:h-[calc(56.25vw*0.62)] xl:max-h-[640px] h-[440px] flex flex-col">
+            <aside className="watch-episode-rail">
+              <div className="glass-panel rounded-2xl overflow-hidden h-full flex flex-col">
                 <EpisodePanel
                   mediaId={details.id}
                   totalSeasons={details.totalSeasons || 1}
