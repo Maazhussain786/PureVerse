@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useUserState } from "./UserStateContext";
 import useDragScroll from "../hooks/useDragScroll";
+import LoadingSpinner from "./LoadingSpinner";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
@@ -137,19 +138,7 @@ export default function EpisodeBrowser({
 
       {/* Loading skeletons */}
       {loading && (
-        <div className="grid gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex flex-col sm:flex-row gap-4 p-3 rounded-2xl ring-1 ring-white/5">
-              <div className="skeleton w-full sm:w-[260px] aspect-video rounded-xl flex-shrink-0" />
-              <div className="flex-1 space-y-3 py-2">
-                <div className="skeleton w-24 h-3 rounded" />
-                <div className="skeleton w-2/3 h-5 rounded" />
-                <div className="skeleton w-full h-3 rounded" />
-                <div className="skeleton w-4/5 h-3 rounded" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <LoadingSpinner />
       )}
 
       {/* Episode cards */}

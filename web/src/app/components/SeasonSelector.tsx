@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import LoadingSpinner from "./LoadingSpinner";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
@@ -116,18 +117,7 @@ export default function SeasonSelector({
 
       {/* Loading Skeleton */}
       {loading && (
-        <div className="grid gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex gap-4 p-4 rounded-xl border border-white/5">
-              <div className="skeleton w-[120px] md:w-[160px] aspect-video rounded-lg flex-shrink-0" />
-              <div className="flex-1 space-y-2 py-1">
-                <div className="skeleton w-16 h-3 rounded" />
-                <div className="skeleton w-3/4 h-4 rounded" />
-                <div className="skeleton w-full h-3 rounded" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <LoadingSpinner />
       )}
 
       {/* Episodes Grid */}

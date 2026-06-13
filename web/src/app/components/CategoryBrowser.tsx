@@ -5,6 +5,7 @@ import Link from "next/link";
 import MediaRow from "./MediaRow";
 import MediaCard from "./MediaCard";
 import { MediaRowSkeleton } from "./Skeletons";
+import LoadingSpinner from "./LoadingSpinner";
 import { useUserState } from "./UserStateContext";
 import useDragScroll from "../hooks/useDragScroll";
 
@@ -382,14 +383,7 @@ export default function CategoryBrowser({ category }: { category: Category }) {
             </div>
 
             {gridLoading ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-x-4 gap-y-8">
-                {Array.from({ length: 14 }).map((_, i) => (
-                  <div key={i}>
-                    <div className="skeleton aspect-[2/3] rounded-xl" />
-                    <div className="skeleton w-[75%] h-3.5 mt-2.5 rounded" />
-                  </div>
-                ))}
-              </div>
+              <LoadingSpinner />
             ) : gridItems.length > 0 ? (
               <>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-x-4 gap-y-8">

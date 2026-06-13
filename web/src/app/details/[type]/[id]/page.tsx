@@ -127,25 +127,8 @@ export default function DetailsPage() {
   // ── Loading skeleton ──
   if (loading) {
     return (
-      <main className="min-h-screen">
-        <div className="relative w-full h-[60vh] md:h-[72vh] bg-[var(--bg-secondary)]">
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/60 to-transparent" />
-        </div>
-        <div className="relative z-10 -mt-[34vh] md:-mt-[40vh] px-5 md:px-10 lg:px-16 max-w-[1500px] mx-auto">
-          <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-end">
-            <div className="skeleton w-[180px] sm:w-[220px] md:w-[280px] aspect-[2/3] rounded-2xl flex-shrink-0" />
-            <div className="flex-1 w-full space-y-4">
-              <div className="skeleton w-32 h-5 rounded-full" />
-              <div className="skeleton w-3/4 h-12 rounded-lg" />
-              <div className="skeleton w-1/2 h-4 rounded" />
-              <div className="skeleton w-full h-4 rounded" />
-              <div className="flex gap-3 mt-6">
-                <div className="skeleton w-44 h-12 rounded-full" />
-                <div className="skeleton w-36 h-12 rounded-full" />
-              </div>
-            </div>
-          </div>
-        </div>
+      <main className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
       </main>
     );
   }
