@@ -343,8 +343,8 @@ export default function Navbar() {
 
       {/* ─── Search Overlay ─── */}
       {searchOpen && (
-        <div className="search-overlay fixed inset-0 z-[60] flex items-start justify-center pt-[9vh] px-4 animate-fade-in">
-          <div className="absolute inset-0" onClick={closeSearch} />
+        <div className="search-overlay fixed inset-0 z-[60] flex items-start justify-center pt-[9vh] px-4 animate-fade-in" style={{ zIndex: 60, paddingTop: "9vh", paddingLeft: "16px", paddingRight: "16px" }}>
+          <div className="absolute inset-0" onClick={closeSearch} style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }} />
           <div className="relative w-full max-w-2xl animate-scale-in">
             <div className="bg-[var(--bg-card)]/95 backdrop-blur-2xl rounded-2xl overflow-hidden shadow-[0_30px_90px_rgba(0,0,0,0.85)] border border-white/10 flex flex-col max-h-[80vh]">
               {/* Input area */}
