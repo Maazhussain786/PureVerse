@@ -32,17 +32,27 @@ export async function resolveVidSrcStream(
 
   if (type === 'movie') {
     // ── MOVIE servers (film/TV catalogue providers — kept separate from anime) ──
+    // Ordered ad-clean FIRST. VidLink/VidFast are "premium API" embeds that
+    // play fine inside a sandboxed iframe (no popup/redirect ads). VidSrc,
+    // 2Embed and MultiEmbed are ad-heavy and demand "Please Disable Sandbox",
+    // so they sit lower — reachable via Switch Server + the Ad-Block toggle.
     sources.push(
-      {
-        server: 'VidSrc',
-        quality: 'Auto',
-        url: `https://vidsrc.to/embed/movie/${rawId}`,
-        type: 'embed',
-      },
       {
         server: 'VidLink',
         quality: 'Auto',
         url: `https://vidlink.pro/movie/${rawId}`,
+        type: 'embed',
+      },
+      {
+        server: 'VidFast',
+        quality: 'Auto',
+        url: `https://vidfast.pro/movie/${rawId}?autoPlay=true`,
+        type: 'embed',
+      },
+      {
+        server: 'VidSrc',
+        quality: 'Auto',
+        url: `https://vidsrc.to/embed/movie/${rawId}`,
         type: 'embed',
       },
       {
@@ -56,29 +66,30 @@ export async function resolveVidSrcStream(
         quality: 'Auto',
         url: `https://multiembed.mov/?video_id=${rawId}&tmdb=1`,
         type: 'embed',
-      },
-      {
-        server: 'VidFast',
-        quality: 'Auto',
-        url: `https://vidfast.pro/movie/${rawId}?autoPlay=true`,
-        type: 'embed',
       }
     );
   } else if (type === 'tv') {
     // ── TV servers (film/TV catalogue providers — kept separate from anime) ──
+    // Ad-clean providers first (see movie note above).
     const s = season || '1';
     const e = episode || '1';
     sources.push(
       {
-        server: 'VidSrc',
-        quality: 'Auto',
-        url: `https://vidsrc.to/embed/tv/${rawId}/${s}/${e}`,
-        type: 'embed',
-      },
-      {
         server: 'VidLink',
         quality: 'Auto',
         url: `https://vidlink.pro/tv/${rawId}/${s}/${e}`,
+        type: 'embed',
+      },
+      {
+        server: 'VidFast',
+        quality: 'Auto',
+        url: `https://vidfast.pro/tv/${rawId}/${s}/${e}?autoPlay=true`,
+        type: 'embed',
+      },
+      {
+        server: 'VidSrc',
+        quality: 'Auto',
+        url: `https://vidsrc.to/embed/tv/${rawId}/${s}/${e}`,
         type: 'embed',
       },
       {
@@ -91,12 +102,6 @@ export async function resolveVidSrcStream(
         server: 'MultiEmbed',
         quality: 'Auto',
         url: `https://multiembed.mov/?video_id=${rawId}&tmdb=1&s=${s}&e=${e}`,
-        type: 'embed',
-      },
-      {
-        server: 'VidFast',
-        quality: 'Auto',
-        url: `https://vidfast.pro/tv/${rawId}/${s}/${e}?autoPlay=true`,
         type: 'embed',
       }
     );
