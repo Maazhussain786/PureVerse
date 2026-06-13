@@ -326,7 +326,7 @@ function WatchPageInner() {
   const activeSource = streamData?.sources?.[activeSourceIdx];
 
   return (
-    <main className="min-h-screen bg-[var(--bg-primary)] pt-[68px]">
+    <main className="min-h-screen bg-[var(--bg-primary)]" style={{ paddingTop: '80px' }}>
       <div className="w-full max-w-[1700px] mx-auto px-3 md:px-6 pt-3 md:pt-5 pb-12">
         {/* ─── Theater: player + episode rail ─── */}
         <div className={`flex flex-col ${isSeries ? "xl:flex-row" : ""} gap-4`}>
@@ -367,13 +367,12 @@ function WatchPageInner() {
               {!loading && !error && activeSource && (
                 <>
                   <iframe
-                    key={`${activeSource.url}-sb`}
+                    key={`${activeSource.url}-open`}
                     src={activeSource.url}
                     className="w-full h-full border-none rounded-2xl"
                     allowFullScreen
                     allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
                     referrerPolicy="origin"
-                    sandbox={PLAYER_SANDBOX}
                   />
                   {/* Region-blocked iframes render blank without firing
                       onError — the recovery control must always be reachable. */}
