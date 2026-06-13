@@ -180,12 +180,12 @@ function SearchClient() {
   const hasQuery = !!query.trim();
 
   return (
-    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 max-w-[1600px] mx-auto">
+    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 max-w-[1600px] mx-auto" style={{ paddingTop: "110px", paddingBottom: "110px", paddingLeft: "20px", paddingRight: "20px" }}>
       {/* ─── Search input ─── */}
       <div className="max-w-3xl mx-auto mb-8">
         <div className="relative group">
           <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-[var(--accent-primary)]/40 via-transparent to-[var(--accent-teal)]/30 opacity-0 group-focus-within:opacity-100 transition-opacity blur-sm pointer-events-none" />
-          <div className="relative flex items-center gap-4 px-6 py-4 rounded-2xl bg-[var(--bg-card)] border border-white/10 group-focus-within:border-[var(--accent-primary)]/50 transition-colors">
+          <div className="relative flex items-center gap-4 px-6 py-4 rounded-2xl bg-[var(--bg-card)] border border-white/10 group-focus-within:border-[var(--accent-primary)]/50 transition-colors" style={{ padding: "16px 24px", gap: "16px" }}>
             {loading ? (
               <div className="w-[22px] h-[22px] border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin flex-shrink-0" />
             ) : (
@@ -242,6 +242,7 @@ function SearchClient() {
                     key={s}
                     onClick={() => runSearch(s)}
                     className="flex items-center gap-2 px-4 py-2 rounded-full text-sm text-[var(--text-secondary)] bg-white/[0.04] border border-white/10 hover:text-white hover:border-[var(--accent-primary)]/40 transition-all"
+                    style={{ padding: "8px 16px", gap: "8px" }}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-50">
                       <circle cx="12" cy="12" r="10" />
@@ -265,6 +266,7 @@ function SearchClient() {
                     key={t.id}
                     href={`/details/${t.type}/${t.id}`}
                     className="group flex items-center gap-3 p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-[var(--accent-primary)]/40 hover:bg-white/[0.06] transition-all"
+                    style={{ padding: "10px", gap: "12px" }}
                   >
                     <span className="text-lg font-black text-[var(--accent-primary)]/70 w-6 text-center flex-shrink-0" style={{ fontFamily: "var(--font-space)" }}>
                       {idx + 1}
