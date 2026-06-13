@@ -71,7 +71,6 @@ function WatchPageInner() {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [seasonEpisodes, setSeasonEpisodes] = useState<EpisodeInfo[]>([]);
   const [autoplayNext, setAutoplayNext] = useState(true);
-  const [autoplayNext, setAutoplayNext] = useState(true);
   const [partyOpen, setPartyOpen] = useState(false);
   const [shared, setShared] = useState(false);
   const lastProgressSync = useRef(0);
