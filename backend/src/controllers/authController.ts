@@ -23,8 +23,9 @@ export const googleSignIn = async (req: AuthedRequest, res: Response) => {
     const result = await signInWithGoogle(credential, importState);
     res.json({ success: true, data: sessionPayload(result) });
   } catch (error: any) {
-    console.error('[Auth] Google sign-in failed:', error?.message || error);
-    res.status(401).json({ success: false, message: 'Google sign-in failed' });
+    const reason = error?.message || 'Google sign-in failed';
+    console.error('[Auth] Google sign-in failed:', reason);
+    res.status(401).json({ success: false, message: reason });
   }
 };
 

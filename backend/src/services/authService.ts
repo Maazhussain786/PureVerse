@@ -9,7 +9,13 @@ import {
 } from './userStore';
 import { HistoryItem, ListItem, UserRecord } from '../models/user';
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+// Accept one or more client IDs (comma-separated), trimming any stray
+// whitespace/newlines that creep in when the value is pasted into a hosting
+// dashboard (Render/Vercel). Supports a web + Android client side by side.
+const ALLOWED_AUDIENCES = (process.env.GOOGLE_CLIENT_ID || '')
+  .split(',')
+  .map((id) => id.trim())
+  .filter(Boolean);
 
 interface GoogleTokenInfo {
   sub: string;
@@ -27,16 +33,26 @@ interface GoogleTokenInfo {
  * (when GOOGLE_CLIENT_ID is configured) and expiry.
  */
 export async function verifyGoogleToken(credential: string): Promise<GoogleTokenInfo> {
-  const res = await axios.get('https://oauth2.googleapis.com/tokeninfo', {
-    params: { id_token: credential },
-    timeout: 8000,
-  });
-  const info = res.data as GoogleTokenInfo;
-  if (!info?.sub || !info?.email) {
-    throw new Error('Invalid Google token payload');
+  let info: GoogleTokenInfo;
+  try {
+    const res = await axios.get('https://oauth2.googleapis.com/tokeninfo', {
+      params: { id_token: credential },
+      timeout: 8000,
+    });
+    info = res.data as GoogleTokenInfo;
+  } catch (err: any) {
+    // tokeninfo returns 400 with { error_description } for malformed/expired tokens
+    const detail = err?.response?.data?.error_description || err?.message || 'request failed';
+    throw new Error(`Google tokeninfo verification failed: ${detail}`);
   }
-  if (GOOGLE_CLIENT_ID && info.aud !== GOOGLE_CLIENT_ID) {
-    throw new Error('Google token audience mismatch');
+
+  if (!info?.sub || !info?.email) {
+    throw new Error('Invalid Google token payload (missing sub/email)');
+  }
+  if (ALLOWED_AUDIENCES.length && !ALLOWED_AUDIENCES.includes((info.aud || '').trim())) {
+    throw new Error(
+      `Google token audience mismatch: token aud="${info.aud}" not in allowed [${ALLOWED_AUDIENCES.join(', ')}]`
+    );
   }
   if (info.exp && parseInt(info.exp, 10) * 1000 < Date.now()) {
     throw new Error('Google token expired');
