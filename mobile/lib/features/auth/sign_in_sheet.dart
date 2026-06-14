@@ -65,6 +65,12 @@ class _SignInSheetState extends ConsumerState<_SignInSheet> {
               ),
             ),
             const SizedBox(height: 20),
+            SizedBox(
+              width: 56,
+              height: 56,
+              child: Image.asset('assets/logo/logo.png', fit: BoxFit.contain),
+            ),
+            const SizedBox(height: 12),
             const Text('Welcome to PureVerse',
                 style: TextStyle(
                     color: AppColors.textPrimary,

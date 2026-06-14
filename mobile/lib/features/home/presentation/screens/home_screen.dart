@@ -96,21 +96,10 @@ class _BrandTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
+        SizedBox(
           width: 32,
           height: 32,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-                colors: [AppColors.accent, AppColors.teal]),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Center(
-            child: Text('P',
-                style: TextStyle(
-                    color: AppColors.onAccent,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16)),
-          ),
+          child: Image.asset('assets/logo/logo.png', fit: BoxFit.contain),
         ),
         const SizedBox(width: 10),
         const Text.rich(
