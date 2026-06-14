@@ -18,9 +18,10 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.aniverse.mobile"
-    // Pinned for AGP 8.7.x compatibility (covers all current plugins:
-    // flutter_secure_storage needs minSdk 23, media_kit needs 21).
-    compileSdk = 35
+    // Pinned: newest AGP 8.x (8.13) keeps proguard-android.txt support that
+    // flutter_inappwebview needs (removed in AGP 9.0) while supporting the
+    // compileSdk 36 / Kotlin 2.3 that media_kit & friends require.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
