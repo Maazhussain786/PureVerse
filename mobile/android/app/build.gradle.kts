@@ -18,7 +18,9 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.aniverse.mobile"
-    compileSdk = flutter.compileSdkVersion
+    // Pinned for AGP 8.7.x compatibility (covers all current plugins:
+    // flutter_secure_storage needs minSdk 23, media_kit needs 21).
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -28,8 +30,8 @@ android {
 
     defaultConfig {
         applicationId = "com.aniverse.mobile"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 23
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
