@@ -38,16 +38,15 @@ class DemoMedia {
   });
 }
 
-// ─── Public test assets ───
+// ─── Public test assets (fast, multi-bitrate HLS so quality variants appear
+// and adaptive streaming keeps buffering low) ───
 // Vidstack sprite-fight clip ships matching multi-language WebVTT subtitles.
 const _spriteHls = 'https://files.vidstack.io/sprite-fight/hls/stream.m3u8';
-const _spriteMp4 = 'https://files.vidstack.io/sprite-fight/720p.mp4';
 
-// Distinct public HLS test streams, used to stand in for separate dubs.
+// Distinct fast multi-bitrate HLS streams, used to stand in for separate dubs.
 const _muxBunny = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
 const _muxTos = 'https://test-streams.mux.dev/tos_ismc/main.m3u8';
-const _appleBipbop =
-    'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/bipbop_16x9_variant.m3u8';
+const _sintel = 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8';
 
 const demoCatalog = <DemoMedia>[
   // Subtitle-rich title: one audio, many subtitle languages (note: no Hindi).
@@ -70,9 +69,9 @@ const demoCatalog = <DemoMedia>[
     title: 'Aniverse Test Anime',
     subtitle: 'Anime demo · Japanese / English / Hindi dubs',
     audioTracks: [
-      AudioOption('Japanese', 'ja', _spriteMp4),
-      AudioOption('English (Dub)', 'en', _muxBunny),
-      AudioOption('Hindi (Dub)', 'hi', _appleBipbop),
+      AudioOption('Japanese', 'ja', _muxBunny),
+      AudioOption('English (Dub)', 'en', _sintel),
+      AudioOption('Hindi (Dub)', 'hi', _muxTos),
     ],
     subtitleTracks: [
       SubtitleOption('English', 'en', 'https://files.vidstack.io/sprite-fight/subs/english.vtt'),

@@ -9,8 +9,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/models/demo_media.dart';
 
 /// Premium custom video player (media_kit / libmpv) with hand-built controls:
-/// play/pause, ±10s skip, a thick draggable scrubber, and dynamic audio (dub)
-/// + subtitle menus driven by the media's actually-available tracks.
+/// play/pause, ±10s skip, a thick draggable scrubber, and dynamic audio (dub),
+/// subtitle and quality menus driven by the stream's actually-available tracks.
 class NativePlayerScreen extends StatefulWidget {
   final DemoMedia media;
   const NativePlayerScreen({super.key, required this.media});
@@ -20,12 +20,19 @@ class NativePlayerScreen extends StatefulWidget {
 }
 
 class _NativePlayerScreenState extends State<NativePlayerScreen> {
-  late final Player _player = Player();
+  // A larger demuxer cache => fewer mid-playback re-buffers on flaky networks.
+  late final Player _player = Player(
+    configuration: const PlayerConfiguration(bufferSize: 64 * 1024 * 1024),
+  );
   late final VideoController _controller = VideoController(_player);
   final List<StreamSubscription> _subs = [];
 
   late AudioOption _audio = widget.media.audioTracks.first;
   SubtitleOption? _subtitle; // null = Off
+
+  // Quality (HLS video variants surfaced by libmpv). Auto = adaptive.
+  List<VideoTrack> _videoTracks = [];
+  VideoTrack _videoTrack = VideoTrack.auto();
 
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -56,6 +63,14 @@ class _NativePlayerScreenState extends State<NativePlayerScreen> {
     }));
     _subs.add(_player.stream.buffering.listen((b) {
       if (mounted) setState(() => _buffering = b);
+    }));
+    _subs.add(_player.stream.tracks.listen((t) {
+      if (!mounted) return;
+      // Keep only real, height-tagged video variants (drop auto/no).
+      final vids = t.video
+          .where((v) => v.id != 'auto' && v.id != 'no' && (v.h ?? 0) > 0)
+          .toList();
+      setState(() => _videoTracks = vids);
     }));
 
     _loadSource(_audio, play: true);
@@ -111,13 +126,23 @@ class _NativePlayerScreenState extends State<NativePlayerScreen> {
     if (a.url == _audio.url) return;
     final pos = _position;
     final wasPlaying = _playing;
-    setState(() => _audio = a);
+    setState(() {
+      _audio = a;
+      _videoTracks = [];
+      _videoTrack = VideoTrack.auto(); // quality resets per source
+    });
     _loadSource(a, at: pos, play: wasPlaying);
   }
 
   void _selectSubtitle(SubtitleOption? s) {
     setState(() => _subtitle = s);
     _applySubtitle(s);
+  }
+
+  void _selectQuality(VideoTrack t) {
+    setState(() => _videoTrack = t);
+    _player.setVideoTrack(t);
+    _restartHideTimer();
   }
 
   // ─── Controls visibility ───
@@ -160,8 +185,9 @@ class _NativePlayerScreenState extends State<NativePlayerScreen> {
               ),
             ),
 
-            // Buffering spinner (only when not showing the controls scrim).
-            if (_buffering)
+            // Buffering spinner while controls are hidden — sits dead-center,
+            // exactly where the play button would be (no overlap with it).
+            if (_buffering && !_controlsVisible)
               const Center(
                 child: CircularProgressIndicator(color: AppColors.accent),
               ),
@@ -175,7 +201,8 @@ class _NativePlayerScreenState extends State<NativePlayerScreen> {
                 child: _ControlsOverlay(
                   title: widget.media.title,
                   playing: _playing,
-                  position: _dragging ? _position : _position,
+                  buffering: _buffering,
+                  position: _position,
                   duration: _duration,
                   onBack: () => Navigator.of(context).maybePop(),
                   onTogglePlay: _togglePlay,
@@ -203,12 +230,13 @@ class _NativePlayerScreenState extends State<NativePlayerScreen> {
     );
   }
 
-  // ─── Settings sheet (dynamic audio + subtitle menus) ───
+  // ─── Settings sheet (dynamic audio + subtitle + quality menus) ───
   void _openSettings() {
     _hideTimer?.cancel();
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.bgCard,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -216,6 +244,8 @@ class _NativePlayerScreenState extends State<NativePlayerScreen> {
         media: widget.media,
         selectedAudio: _audio,
         selectedSubtitle: _subtitle,
+        videoTracks: _videoTracks,
+        selectedQualityId: _videoTrack.id,
         onSelectAudio: (a) {
           Navigator.of(context).pop();
           _selectAudio(a);
@@ -223,6 +253,10 @@ class _NativePlayerScreenState extends State<NativePlayerScreen> {
         onSelectSubtitle: (s) {
           Navigator.of(context).pop();
           _selectSubtitle(s);
+        },
+        onSelectQuality: (t) {
+          Navigator.of(context).pop();
+          _selectQuality(t);
         },
       ),
     ).whenComplete(_restartHideTimer);
@@ -233,6 +267,7 @@ class _NativePlayerScreenState extends State<NativePlayerScreen> {
 class _ControlsOverlay extends StatelessWidget {
   final String title;
   final bool playing;
+  final bool buffering;
   final Duration position;
   final Duration duration;
   final VoidCallback onBack;
@@ -248,6 +283,7 @@ class _ControlsOverlay extends StatelessWidget {
   const _ControlsOverlay({
     required this.title,
     required this.playing,
+    required this.buffering,
     required this.position,
     required this.duration,
     required this.onBack,
@@ -312,36 +348,44 @@ class _ControlsOverlay extends StatelessWidget {
                   const SizedBox(width: 8),
                   _IconButton(
                     icon: Icons.settings_rounded,
-                    tooltip: 'Audio & subtitles',
+                    tooltip: 'Audio, subtitles & quality',
                     onTap: onOpenSettings,
                   ),
                 ],
               ),
             ),
 
-            // ── Center transport ──
+            // ── Center transport (spinner replaces play button while buffering,
+            //    so the loader is perfectly centered, never overlapping it) ──
             Expanded(
               child: Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _IconButton(
-                      icon: Icons.replay_10_rounded,
-                      size: 34,
-                      onTap: onSkipBack,
-                      tooltip: 'Back 10s',
-                    ),
-                    const SizedBox(width: 36),
-                    _PlayButton(playing: playing, onTap: onTogglePlay),
-                    const SizedBox(width: 36),
-                    _IconButton(
-                      icon: Icons.forward_10_rounded,
-                      size: 34,
-                      onTap: onSkipFwd,
-                      tooltip: 'Forward 10s',
-                    ),
-                  ],
-                ),
+                child: buffering
+                    ? const SizedBox(
+                        width: 56,
+                        height: 56,
+                        child: CircularProgressIndicator(
+                            color: AppColors.accent, strokeWidth: 3),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _IconButton(
+                            icon: Icons.replay_10_rounded,
+                            size: 34,
+                            onTap: onSkipBack,
+                            tooltip: 'Back 10s',
+                          ),
+                          const SizedBox(width: 36),
+                          _PlayButton(playing: playing, onTap: onTogglePlay),
+                          const SizedBox(width: 36),
+                          _IconButton(
+                            icon: Icons.forward_10_rounded,
+                            size: 34,
+                            onTap: onSkipFwd,
+                            tooltip: 'Forward 10s',
+                          ),
+                        ],
+                      ),
               ),
             ),
 
@@ -457,72 +501,113 @@ class _SettingsSheet extends StatelessWidget {
   final DemoMedia media;
   final AudioOption selectedAudio;
   final SubtitleOption? selectedSubtitle;
+  final List<VideoTrack> videoTracks;
+  final String selectedQualityId;
   final ValueChanged<AudioOption> onSelectAudio;
   final ValueChanged<SubtitleOption?> onSelectSubtitle;
+  final ValueChanged<VideoTrack> onSelectQuality;
 
   const _SettingsSheet({
     required this.media,
     required this.selectedAudio,
     required this.selectedSubtitle,
+    required this.videoTracks,
+    required this.selectedQualityId,
     required this.onSelectAudio,
     required this.onSelectSubtitle,
+    required this.onSelectQuality,
   });
+
+  /// Unique heights, highest first — labelled "1080p", "720p", …
+  List<VideoTrack> get _qualities {
+    final seen = <int>{};
+    final out = <VideoTrack>[];
+    final sorted = [...videoTracks]
+      ..sort((a, b) => (b.h ?? 0).compareTo(a.h ?? 0));
+    for (final v in sorted) {
+      final h = v.h ?? 0;
+      if (h > 0 && seen.add(h)) out.add(v);
+    }
+    return out;
+  }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.textMuted,
-                  borderRadius: BorderRadius.circular(2),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.textMuted,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 18),
+              const SizedBox(height: 18),
 
-            // Audio / dubs — only languages this title actually has.
-            _heading(Icons.graphic_eq_rounded, 'Audio'),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: media.audioTracks
-                  .map((a) => _chip(
-                        a.label,
-                        a.url == selectedAudio.url,
-                        () => onSelectAudio(a),
-                      ))
-                  .toList(),
-            ),
+              // Quality — Auto + each available resolution (if the stream
+              // exposes variants; otherwise just Auto).
+              _heading(Icons.high_quality_rounded, 'Quality'),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _chip('Auto', selectedQualityId == 'auto',
+                      () => onSelectQuality(VideoTrack.auto())),
+                  ..._qualities.map((v) => _chip(
+                        '${v.h}p',
+                        selectedQualityId == v.id,
+                        () => onSelectQuality(v),
+                      )),
+                ],
+              ),
 
-            const SizedBox(height: 22),
+              const SizedBox(height: 22),
 
-            // Subtitles — "Off" + only languages this title actually has.
-            _heading(Icons.subtitles_rounded, 'Subtitles'),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _chip('Off', selectedSubtitle == null,
-                    () => onSelectSubtitle(null)),
-                ...media.subtitleTracks.map((s) => _chip(
-                      s.label,
-                      selectedSubtitle?.url == s.url,
-                      () => onSelectSubtitle(s),
-                    )),
-              ],
-            ),
-          ],
+              // Audio / dubs — only languages this title actually has.
+              _heading(Icons.graphic_eq_rounded, 'Audio'),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: media.audioTracks
+                    .map((a) => _chip(
+                          a.label,
+                          a.url == selectedAudio.url,
+                          () => onSelectAudio(a),
+                        ))
+                    .toList(),
+              ),
+
+              const SizedBox(height: 22),
+
+              // Subtitles — "Off" + only languages this title actually has.
+              _heading(Icons.subtitles_rounded, 'Subtitles'),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _chip('Off', selectedSubtitle == null,
+                      () => onSelectSubtitle(null)),
+                  ...media.subtitleTracks.map((s) => _chip(
+                        s.label,
+                        selectedSubtitle?.url == s.url,
+                        () => onSelectSubtitle(s),
+                      )),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

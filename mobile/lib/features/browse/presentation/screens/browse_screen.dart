@@ -445,7 +445,7 @@ class _CategoryHero extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           if (bg.isNotEmpty)
-            CachedNetworkImage(imageUrl: bg, fit: BoxFit.cover)
+            CachedNetworkImage(imageUrl: bg, fit: BoxFit.cover, memCacheWidth: 800)
           else
             Container(color: AppColors.bgSecondary),
           Container(
