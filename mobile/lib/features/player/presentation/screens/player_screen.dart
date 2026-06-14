@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 
+import '../../../../core/constants/app_colors.dart';
+
 class PlayerScreen extends StatefulWidget {
   final String streamUrl;
   
@@ -40,8 +42,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       allowMuting: true,
       showControls: true,
       materialProgressColors: ChewieProgressColors(
-        playedColor: const Color(0xFF7C4DFF), // Primary Accent
-        handleColor: const Color(0xFF7C4DFF),
+        playedColor: AppColors.accent,
+        handleColor: AppColors.accent,
         backgroundColor: Colors.grey,
         bufferedColor: Colors.white,
       ),
@@ -80,7 +82,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       body: _chewieController != null && _chewieController!.videoPlayerController.value.isInitialized
           ? Chewie(controller: _chewieController!)
           : const Center(
-              child: CircularProgressIndicator(color: Color(0xFF7C4DFF)),
+              child: CircularProgressIndicator(color: AppColors.accent),
             ),
     );
   }

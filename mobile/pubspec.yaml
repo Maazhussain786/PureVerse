@@ -39,6 +39,7 @@ dependencies:
   media_kit_video: ^1.2.0
   hive: ^2.2.3
   socket_io_client: ^2.0.3
+  flutter_inappwebview: ^6.1.5
   cupertino_icons: ^1.0.8
 
 dev_dependencies:

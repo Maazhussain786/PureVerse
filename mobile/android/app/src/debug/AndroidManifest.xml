@@ -4,4 +4,8 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Debug-only: allow cleartext so the app can reach the dev backend over
+         http (e.g. the emulator alias http://10.0.2.2:5000). Release builds use
+         the production HTTPS backend and never enable cleartext. -->
+    <application android:usesCleartextTraffic="true" />
 </manifest>
