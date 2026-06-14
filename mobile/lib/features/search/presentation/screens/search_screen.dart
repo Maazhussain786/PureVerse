@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/providers/api_providers.dart';
 import '../../../../shared/widgets/media_poster_card.dart';
+import '../../../user/user_state.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -24,6 +25,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     });
   }
 
+  /// Run a search immediately (submit / recent-search tap) and remember it.
+  void _submit(String value) {
+    final q = value.trim();
+    _debounce?.cancel();
+    ref.read(searchQueryProvider.notifier).state = q;
+    if (q.length >= 2) ref.read(userStateProvider.notifier).addRecentSearch(q);
+  }
+
+  void _useRecent(String q) {
+    _controller.text = q;
+    _controller.selection =
+        TextSelection.fromPosition(TextPosition(offset: q.length));
+    _submit(q);
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -35,6 +51,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget build(BuildContext context) {
     final results = ref.watch(searchResultsProvider);
     final query = ref.watch(searchQueryProvider).trim();
+    final recent = ref.watch(userStateProvider.select((s) => s.recentSearches));
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
@@ -48,6 +65,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 autofocus: false,
                 textInputAction: TextInputAction.search,
                 onChanged: _onChanged,
+                onSubmitted: _submit,
                 style: const TextStyle(color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Search movies, series, anime…',
@@ -66,18 +84,64 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
             ),
-            Expanded(child: _results(results, query)),
+            Expanded(
+              child: query.length < 2
+                  ? _idleState(recent)
+                  : _results(results, query),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _results(AsyncValue results, String query) {
-    if (query.length < 2) {
+  // Shown before the user has typed a real query: recent searches or a hint.
+  Widget _idleState(List<String> recent) {
+    if (recent.isEmpty) {
       return _hint(Icons.search_rounded, 'Find something to watch',
           'Type at least 2 characters.');
     }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      children: [
+        Row(
+          children: [
+            const Text('Recent searches',
+                style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600)),
+            const Spacer(),
+            TextButton(
+              onPressed: () =>
+                  ref.read(userStateProvider.notifier).clearRecentSearches(),
+              child: const Text('Clear',
+                  style: TextStyle(color: AppColors.accent, fontSize: 13)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: recent
+              .map((q) => ActionChip(
+                    label: Text(q),
+                    avatar: const Icon(Icons.history_rounded,
+                        size: 16, color: AppColors.textSecondary),
+                    backgroundColor: AppColors.glassBackground,
+                    side: const BorderSide(color: AppColors.glassBorder),
+                    labelStyle: const TextStyle(
+                        color: AppColors.textPrimary, fontSize: 13),
+                    onPressed: () => _useRecent(q),
+                  ))
+              .toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _results(AsyncValue results, String query) {
     return results.when(
       data: (list) {
         if (list.isEmpty) {

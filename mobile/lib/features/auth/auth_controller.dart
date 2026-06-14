@@ -121,15 +121,16 @@ class AuthController extends StateNotifier<AuthState> {
     await GoogleSignInService.signOut();
     state = const AuthState();
   }
+
+  /// Patch name / avatar / preferences and reflect the result locally.
+  Future<void> updateProfile(Map<String, dynamic> patch) async {
+    if (!state.isSignedIn) return;
+    try {
+      final user = await ref.read(apiClientProvider).updateProfile(patch);
+      state = state.copyWith(user: user);
+    } catch (_) {/* best-effort — keep current state */}
+  }
 }
 
 final authControllerProvider =
     StateNotifierProvider<AuthController, AuthState>((ref) => AuthController(ref));
-
-/// Synced watchlist + favorites. Re-fetches whenever auth changes; empty when
-/// signed out.
-final userLibraryProvider = FutureProvider<UserLibrary>((ref) async {
-  final auth = ref.watch(authControllerProvider);
-  if (!auth.isSignedIn) return const UserLibrary();
-  return ref.read(apiClientProvider).getUserState();
-});

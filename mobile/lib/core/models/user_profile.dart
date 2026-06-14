@@ -1,4 +1,5 @@
 import 'media_item.dart';
+import 'watch_history.dart';
 
 class UserPreferences {
   final bool autoplayNext;
@@ -91,11 +92,18 @@ class AuthSession {
       );
 }
 
-/// Synced watchlist + favorites (from GET /user/state).
+/// Synced watchlist + favorites + history + recent searches (GET /user/state).
 class UserLibrary {
   final List<MediaItem> watchlist;
   final List<MediaItem> favorites;
-  const UserLibrary({this.watchlist = const [], this.favorites = const []});
+  final List<WatchHistoryItem> history;
+  final List<String> recentSearches;
+  const UserLibrary({
+    this.watchlist = const [],
+    this.favorites = const [],
+    this.history = const [],
+    this.recentSearches = const [],
+  });
 
   bool get isEmpty => watchlist.isEmpty && favorites.isEmpty;
 
@@ -105,5 +113,11 @@ class UserLibrary {
   factory UserLibrary.fromState(Map<String, dynamic> j) => UserLibrary(
         watchlist: MediaItem.listFrom(j['watchlist']),
         favorites: MediaItem.listFrom(j['favorites']),
+        history: WatchHistoryItem.listFrom(j['history']),
+        recentSearches: (j['recentSearches'] as List?)
+                ?.map((e) => e.toString())
+                .where((e) => e.isNotEmpty)
+                .toList() ??
+            const [],
       );
 }

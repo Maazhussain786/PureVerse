@@ -6,8 +6,10 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/models/media_item.dart';
 import '../../../../shared/providers/api_providers.dart';
 import '../../../../shared/widgets/media_rail.dart';
+import '../../../../shared/widgets/continue_watching_rail.dart';
 import '../../../details/presentation/screens/details_screen.dart';
 import '../../../shell/main_shell.dart';
+import '../../../user/user_state.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -15,6 +17,9 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final trending = ref.watch(trendingProvider);
+    final continueWatching =
+        ref.watch(userStateProvider.select((s) => s.continueWatching));
+    final watchlist = ref.watch(userStateProvider.select((s) => s.watchlist));
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
@@ -26,6 +31,11 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(trendingMoviesProvider);
           ref.invalidate(trendingSeriesProvider);
           ref.invalidate(trendingAnimeProvider);
+          ref.invalidate(nowPlayingProvider);
+          ref.invalidate(topRatedMoviesProvider);
+          ref.invalidate(topRatedSeriesProvider);
+          ref.invalidate(popularAnimeProvider);
+          ref.read(userStateProvider.notifier).reload();
           await ref.read(trendingProvider.future).catchError((_) => <MediaItem>[]);
         },
         child: CustomScrollView(
@@ -40,7 +50,7 @@ class HomeScreen extends ConsumerWidget {
                   icon: const Icon(Icons.search_rounded,
                       color: AppColors.textSecondary),
                   onPressed: () =>
-                      ref.read(shellTabProvider.notifier).state = 1,
+                      ref.read(shellTabProvider.notifier).state = 4,
                 ),
               ],
             ),
@@ -58,6 +68,23 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
               error: (e, _) => SliverToBoxAdapter(child: _HeroError(error: e)),
+            ),
+
+            // Continue Watching (real user history — resumes playback)
+            SliverToBoxAdapter(
+              child: ContinueWatchingRail(
+                items: continueWatching,
+                onRemove: (key) =>
+                    ref.read(userStateProvider.notifier).removeFromHistory(key),
+              ),
+            ),
+
+            // My List (synced watchlist)
+            SliverToBoxAdapter(
+              child: MediaRail(
+                title: 'My List',
+                items: AsyncValue.data(watchlist),
+              ),
             ),
 
             // Rails
@@ -82,6 +109,26 @@ class HomeScreen extends ConsumerWidget {
               child: MediaRail(
                   title: 'Top Anime',
                   items: ref.watch(trendingAnimeProvider)),
+            ),
+            SliverToBoxAdapter(
+              child: MediaRail(
+                  title: 'New Releases',
+                  items: ref.watch(nowPlayingProvider)),
+            ),
+            SliverToBoxAdapter(
+              child: MediaRail(
+                  title: 'Top Rated Movies',
+                  items: ref.watch(topRatedMoviesProvider)),
+            ),
+            SliverToBoxAdapter(
+              child: MediaRail(
+                  title: 'Top Rated Series',
+                  items: ref.watch(topRatedSeriesProvider)),
+            ),
+            SliverToBoxAdapter(
+              child: MediaRail(
+                  title: 'Popular Anime',
+                  items: ref.watch(popularAnimeProvider)),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 40)),
           ],

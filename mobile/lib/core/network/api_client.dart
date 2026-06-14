@@ -6,6 +6,7 @@ import '../models/media_item.dart';
 import '../models/media_details.dart';
 import '../models/stream_source.dart';
 import '../models/user_profile.dart';
+import '../models/watch_history.dart';
 
 /// Friendly error surfaced to the UI instead of a raw DioException.
 class ApiException implements Exception {
@@ -48,6 +49,25 @@ class ApiClient {
   Future<List<MediaItem>> getTrendingSeries() => _list('/trending/series');
   Future<List<MediaItem>> getTrendingAnime() => _list('/trending/anime');
   Future<List<MediaItem>> getPopularAnime() => _list('/popular/anime');
+  Future<List<MediaItem>> getTopRated(String type) => _list('/top-rated/$type');
+  Future<List<MediaItem>> getNowPlaying() => _list('/now-playing');
+  Future<List<MediaItem>> getRecommendations(String type, String id) =>
+      _list('/media/recommendations/$type/$id');
+
+  /// Fetch any discovery endpoint by raw path (used by genre rails).
+  Future<List<MediaItem>> listEndpoint(String path) => _list(path);
+
+  /// Catalogue discovery — genre / sort / pagination (browse grid).
+  Future<List<MediaItem>> discover(
+    String category, {
+    int? genre,
+    String sort = 'popular',
+    int page = 1,
+  }) {
+    final query = <String, dynamic>{'sort': sort, 'page': page};
+    if (genre != null) query['genre'] = genre;
+    return _list('/discover/$category', query: query);
+  }
 
   Future<List<MediaItem>> search(String query) =>
       _list('/search', query: {'q': query});
@@ -97,6 +117,12 @@ class ApiClient {
     await _post('/auth/logout', null);
   }
 
+  Future<UserProfile> updateProfile(Map<String, dynamic> patch) async {
+    final data = await _patch('/user/me', patch);
+    return UserProfile.fromJson(_asMap(data)['user'] as Map<String, dynamic>? ??
+        _asMap(data));
+  }
+
   // ─── Synced user state ──────────────────────────────────
   Future<UserLibrary> getUserState() async {
     final data = await _get('/user/state');
@@ -110,6 +136,18 @@ class ApiClient {
       _post('/user/favorites', m.toListItemJson());
   Future<void> removeFavorite(String id) => _delete('/user/favorites/$id');
 
+  // ─── Watch history ──────────────────────────────────────
+  Future<void> upsertHistory(WatchHistoryItem item) =>
+      _post('/user/history', item.toJson());
+  Future<void> removeHistory(String key) =>
+      _delete('/user/history/${Uri.encodeComponent(key)}');
+  Future<void> clearHistory() => _delete('/user/history');
+
+  // ─── Recent searches ────────────────────────────────────
+  Future<void> addRecentSearch(String q) =>
+      _post('/user/searches', {'q': q});
+  Future<void> clearRecentSearches() => _delete('/user/searches');
+
   // ─── Internals ──────────────────────────────────────────
   Future<List<MediaItem>> _list(String path,
       {Map<String, dynamic>? query}) async {
@@ -121,6 +159,8 @@ class ApiClient {
       _send('GET', path, query: query);
   Future<dynamic> _post(String path, Object? body) =>
       _send('POST', path, body: body);
+  Future<dynamic> _patch(String path, Object? body) =>
+      _send('PATCH', path, body: body);
   Future<dynamic> _delete(String path) => _send('DELETE', path);
 
   Future<dynamic> _send(String method, String path,

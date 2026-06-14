@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/models/media_item.dart';
-import '../../../../core/models/user_profile.dart';
 import '../../../auth/auth_controller.dart';
 import '../../../auth/sign_in_sheet.dart';
+import '../../../user/user_state.dart';
 import '../../../../shared/widgets/media_poster_card.dart';
 import '../../../../shared/widgets/section_header.dart';
 
@@ -26,32 +26,25 @@ class LibraryScreen extends ConsumerWidget {
   }
 
   Widget _libraryBody(BuildContext context, WidgetRef ref) {
-    final library = ref.watch(userLibraryProvider);
+    final state = ref.watch(userStateProvider);
     return RefreshIndicator(
       color: AppColors.accent,
       backgroundColor: AppColors.bgCard,
-      onRefresh: () async {
-        ref.invalidate(userLibraryProvider);
-        await ref.read(userLibraryProvider.future).catchError((_) => const UserLibrary());
-      },
-      child: library.when(
-        data: (lib) {
-          if (lib.isEmpty) return _emptyLibrary();
-          return ListView(
-            padding: const EdgeInsets.only(top: 8, bottom: 32),
-            children: [
-              if (lib.watchlist.isNotEmpty)
-                _section('Watchlist', lib.watchlist),
-              if (lib.favorites.isNotEmpty)
-                _section('Favorites', lib.favorites),
-            ],
-          );
-        },
-        loading: () =>
-            const Center(child: CircularProgressIndicator(color: AppColors.accent)),
-        error: (e, _) => _message(Icons.cloud_off_rounded,
-            'Could not load your library', '$e'),
-      ),
+      onRefresh: () => ref.read(userStateProvider.notifier).reload(),
+      child: state.loading && state.isEmpty
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.accent))
+          : state.isEmpty
+              ? _emptyLibrary()
+              : ListView(
+                  padding: const EdgeInsets.only(top: 8, bottom: 32),
+                  children: [
+                    if (state.watchlist.isNotEmpty)
+                      _section('Watchlist', state.watchlist),
+                    if (state.favorites.isNotEmpty)
+                      _section('Favorites', state.favorites),
+                  ],
+                ),
     );
   }
 

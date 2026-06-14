@@ -25,6 +25,33 @@ final trendingSeriesProvider = FutureProvider<List<MediaItem>>(
 final trendingAnimeProvider = FutureProvider<List<MediaItem>>(
     (ref) => ref.read(apiClientProvider).getTrendingAnime());
 
+final popularAnimeProvider = FutureProvider<List<MediaItem>>(
+    (ref) => ref.read(apiClientProvider).getPopularAnime());
+
+final topRatedMoviesProvider = FutureProvider<List<MediaItem>>(
+    (ref) => ref.read(apiClientProvider).getTopRated('movies'));
+
+final topRatedSeriesProvider = FutureProvider<List<MediaItem>>(
+    (ref) => ref.read(apiClientProvider).getTopRated('series'));
+
+final nowPlayingProvider = FutureProvider<List<MediaItem>>(
+    (ref) => ref.read(apiClientProvider).getNowPlaying());
+
+/// Any discovery endpoint by raw path (browse genre rails / category rows).
+final endpointListProvider =
+    FutureProvider.family<List<MediaItem>, String>((ref, path) {
+  return ref.read(apiClientProvider).listEndpoint(path);
+});
+
+/// Per-title recommendations, keyed by "type/id".
+final recommendationsProvider =
+    FutureProvider.family<List<MediaItem>, String>((ref, key) {
+  final i = key.indexOf('/');
+  final type = key.substring(0, i);
+  final id = key.substring(i + 1);
+  return ref.read(apiClientProvider).getRecommendations(type, id);
+});
+
 // ─── Details (keyed by "type/id") ─────────────────────────
 final mediaDetailsProvider =
     FutureProvider.family<MediaDetails, String>((ref, key) {

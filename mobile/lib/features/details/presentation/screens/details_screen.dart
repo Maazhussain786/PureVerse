@@ -5,16 +5,33 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/models/media_item.dart';
 import '../../../../core/models/media_details.dart';
+import '../../../../core/models/watch_history.dart';
 import '../../../../shared/providers/api_providers.dart';
 import '../../../auth/auth_controller.dart';
 import '../../../auth/sign_in_sheet.dart';
+import '../../../user/user_state.dart';
 import '../../../player/presentation/screens/embed_player_screen.dart';
 
 class DetailsScreen extends ConsumerWidget {
   final MediaItem item;
   const DetailsScreen({super.key, required this.item});
 
-  void _play(BuildContext context, MediaDetails d, {int? season, int? episode}) {
+  void _play(BuildContext context, WidgetRef ref, MediaDetails d,
+      {int? season, int? episode, String? episodeTitle}) {
+    // Record a history entry so Continue Watching / History reflect the play.
+    ref.read(userStateProvider.notifier).addToHistory(
+          WatchHistoryItem.create(
+            id: d.id,
+            type: d.type,
+            title: d.title,
+            posterUrl: d.posterUrl,
+            rating: d.rating,
+            releaseYear: d.releaseYear,
+            season: season,
+            episode: episode,
+            episodeTitle: episodeTitle,
+          ),
+        );
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => EmbedPlayerScreen(
         mediaType: d.type,
@@ -37,7 +54,7 @@ class DetailsScreen extends ConsumerWidget {
           _appBar(context),
           SliverToBoxAdapter(
             child: async.when(
-              data: (d) => _content(context, d),
+              data: (d) => _content(context, ref, d),
               loading: () => _loadingHeader(),
               error: (e, _) => _errorBody(e),
             ),
@@ -86,7 +103,7 @@ class DetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _content(BuildContext context, MediaDetails d) {
+  Widget _content(BuildContext context, WidgetRef ref, MediaDetails d) {
     final isPlayable = d.type == 'movie';
     final episodes = d.episodes;
 
@@ -130,7 +147,7 @@ class DetailsScreen extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => _play(context, d),
+                onPressed: () => _play(context, ref, d),
                 icon: const Icon(Icons.play_arrow_rounded),
                 label: const Text('Watch Now'),
               ),
@@ -159,7 +176,7 @@ class DetailsScreen extends ConsumerWidget {
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary)),
             const SizedBox(height: 12),
-            ...episodes.map((e) => _episodeTile(context, d, e)),
+            ...episodes.map((e) => _episodeTile(context, ref, d, e)),
           ],
         ],
       ),
@@ -258,10 +275,13 @@ class DetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _episodeTile(BuildContext context, MediaDetails d, Episode e) {
+  Widget _episodeTile(
+      BuildContext context, WidgetRef ref, MediaDetails d, Episode e) {
     return InkWell(
-      onTap: () => _play(context, d,
-          season: e.seasonNumber, episode: e.episodeNumber),
+      onTap: () => _play(context, ref, d,
+          season: e.seasonNumber,
+          episode: e.episodeNumber,
+          episodeTitle: e.title),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -346,9 +366,9 @@ class _LibraryActions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lib = ref.watch(userLibraryProvider).valueOrNull;
-    final inWatch = lib?.inWatchlist(item.id) ?? false;
-    final inFav = lib?.inFavorites(item.id) ?? false;
+    final state = ref.watch(userStateProvider);
+    final inWatch = state.inWatchlist(item.id);
+    final inFav = state.inFavorites(item.id);
 
     return Row(
       children: [
@@ -377,33 +397,17 @@ class _LibraryActions extends ConsumerWidget {
     );
   }
 
-  Future<void> _toggle(BuildContext context, WidgetRef ref,
-      {required bool watchlist, required bool isIn}) async {
+  void _toggle(BuildContext context, WidgetRef ref,
+      {required bool watchlist, required bool isIn}) {
     if (!ref.read(authControllerProvider).isSignedIn) {
       showSignInSheet(context);
       return;
     }
-    final api = ref.read(apiClientProvider);
-    try {
-      if (watchlist) {
-        if (isIn) {
-          await api.removeWatchlist(item.id);
-        } else {
-          await api.addWatchlist(item);
-        }
-      } else {
-        if (isIn) {
-          await api.removeFavorite(item.id);
-        } else {
-          await api.addFavorite(item);
-        }
-      }
-      ref.invalidate(userLibraryProvider);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
-      }
+    final notifier = ref.read(userStateProvider.notifier);
+    if (watchlist) {
+      isIn ? notifier.removeWatchlist(item.id) : notifier.addWatchlist(item);
+    } else {
+      isIn ? notifier.removeFavorite(item.id) : notifier.addFavorite(item);
     }
   }
 
