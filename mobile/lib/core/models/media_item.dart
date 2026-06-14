@@ -43,6 +43,16 @@ class MediaItem {
         synopsis: (j['synopsis'] ?? '').toString(),
       );
 
+  /// Body shape the backend's watchlist/favorites endpoints expect (ListItem).
+  Map<String, dynamic> toListItemJson() => {
+        'id': id,
+        'type': type,
+        'title': title,
+        'posterUrl': posterUrl,
+        'rating': rating,
+        'releaseYear': releaseYear,
+      };
+
   static List<MediaItem> listFrom(dynamic data) {
     if (data is! List) return const [];
     return data

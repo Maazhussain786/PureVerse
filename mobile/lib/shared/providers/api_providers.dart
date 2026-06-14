@@ -1,11 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/api_client.dart';
+import '../../core/storage/token_store.dart';
 import '../../core/models/media_item.dart';
 import '../../core/models/media_details.dart';
 
-/// Single shared API client.
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
+/// Secure store for the session token.
+final tokenStoreProvider = Provider<TokenStore>((ref) => TokenStore());
+
+/// Single shared API client (auto-attaches the stored bearer token).
+final apiClientProvider = Provider<ApiClient>(
+    (ref) => ApiClient(tokenStore: ref.read(tokenStoreProvider)));
 
 // ─── Home rails ───────────────────────────────────────────
 final trendingProvider = FutureProvider<List<MediaItem>>(

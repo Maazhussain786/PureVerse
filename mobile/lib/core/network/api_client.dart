@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart';
 
 import '../config/app_config.dart';
+import '../storage/token_store.dart';
 import '../models/media_item.dart';
 import '../models/media_details.dart';
 import '../models/stream_source.dart';
+import '../models/user_profile.dart';
 
 /// Friendly error surfaced to the UI instead of a raw DioException.
 class ApiException implements Exception {
@@ -16,16 +18,29 @@ class ApiException implements Exception {
 
 /// Thin REST client over the PureVerse backend. Base URL comes from
 /// [AppConfig.apiBaseUrl] so the same build can target dev or DigitalOcean.
+/// A request interceptor attaches the stored bearer token automatically.
 class ApiClient {
   final Dio _dio;
+  final TokenStore _tokenStore;
 
-  ApiClient({Dio? dio})
-      : _dio = dio ??
+  ApiClient({Dio? dio, TokenStore? tokenStore})
+      : _tokenStore = tokenStore ?? TokenStore(),
+        _dio = dio ??
             Dio(BaseOptions(
               baseUrl: AppConfig.apiBaseUrl,
               connectTimeout: const Duration(seconds: 15),
               receiveTimeout: const Duration(seconds: 20),
-            ));
+            )) {
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await _tokenStore.read();
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        handler.next(options);
+      },
+    ));
+  }
 
   // ─── Discovery ──────────────────────────────────────────
   Future<List<MediaItem>> getTrending() => _list('/trending');
@@ -34,7 +49,6 @@ class ApiClient {
   Future<List<MediaItem>> getTrendingAnime() => _list('/trending/anime');
   Future<List<MediaItem>> getPopularAnime() => _list('/popular/anime');
 
-  // ─── Search ─────────────────────────────────────────────
   Future<List<MediaItem>> search(String query) =>
       _list('/search', query: {'q': query});
 
@@ -44,12 +58,8 @@ class ApiClient {
     return MediaDetails.fromJson(_asMap(data));
   }
 
-  Future<StreamPayload> getStream(
-    String type,
-    String id, {
-    int? season,
-    int? episode,
-  }) async {
+  Future<StreamPayload> getStream(String type, String id,
+      {int? season, int? episode}) async {
     final query = <String, dynamic>{};
     if (season != null) query['season'] = season;
     if (episode != null) query['episode'] = episode;
@@ -66,6 +76,40 @@ class ApiClient {
         .toList();
   }
 
+  // ─── Auth ───────────────────────────────────────────────
+  Future<AuthSession> signInGuest(String name) async {
+    final data = await _post('/auth/guest', {'name': name});
+    return AuthSession.fromJson(_asMap(data));
+  }
+
+  Future<AuthSession> signInGoogle(String idToken) async {
+    final data = await _post('/auth/google', {'credential': idToken});
+    return AuthSession.fromJson(_asMap(data));
+  }
+
+  Future<UserProfile> getSession() async {
+    final data = await _get('/auth/session');
+    return UserProfile.fromJson(_asMap(data)['user'] as Map<String, dynamic>? ??
+        _asMap(data));
+  }
+
+  Future<void> logout() async {
+    await _post('/auth/logout', null);
+  }
+
+  // ─── Synced user state ──────────────────────────────────
+  Future<UserLibrary> getUserState() async {
+    final data = await _get('/user/state');
+    return UserLibrary.fromState(_asMap(data));
+  }
+
+  Future<void> addWatchlist(MediaItem m) =>
+      _post('/user/watchlist', m.toListItemJson());
+  Future<void> removeWatchlist(String id) => _delete('/user/watchlist/$id');
+  Future<void> addFavorite(MediaItem m) =>
+      _post('/user/favorites', m.toListItemJson());
+  Future<void> removeFavorite(String id) => _delete('/user/favorites/$id');
+
   // ─── Internals ──────────────────────────────────────────
   Future<List<MediaItem>> _list(String path,
       {Map<String, dynamic>? query}) async {
@@ -73,17 +117,29 @@ class ApiClient {
     return MediaItem.listFrom(data);
   }
 
-  Future<dynamic> _get(String path, {Map<String, dynamic>? query}) async {
+  Future<dynamic> _get(String path, {Map<String, dynamic>? query}) =>
+      _send('GET', path, query: query);
+  Future<dynamic> _post(String path, Object? body) =>
+      _send('POST', path, body: body);
+  Future<dynamic> _delete(String path) => _send('DELETE', path);
+
+  Future<dynamic> _send(String method, String path,
+      {Object? body, Map<String, dynamic>? query}) async {
     try {
-      final res = await _dio.get(path, queryParameters: query);
-      final body = res.data;
-      if (body is Map && body['success'] == false) {
+      final res = await _dio.request(
+        path,
+        data: body,
+        queryParameters: query,
+        options: Options(method: method),
+      );
+      final data = res.data;
+      if (data is Map && data['success'] == false) {
         throw ApiException(
-          (body['message'] ?? 'Request failed').toString(),
+          (data['message'] ?? 'Request failed').toString(),
           statusCode: res.statusCode,
         );
       }
-      return (body is Map && body.containsKey('data')) ? body['data'] : body;
+      return (data is Map && data.containsKey('data')) ? data['data'] : data;
     } on DioException catch (e) {
       throw ApiException(_friendly(e), statusCode: e.response?.statusCode);
     }
@@ -93,6 +149,10 @@ class ApiClient {
       data is Map<String, dynamic> ? data : <String, dynamic>{};
 
   String _friendly(DioException e) {
+    final serverMsg = e.response?.data is Map
+        ? (e.response?.data as Map)['message']?.toString()
+        : null;
+    if (serverMsg != null && serverMsg.isNotEmpty) return serverMsg;
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.receiveTimeout:

@@ -1,0 +1,83 @@
+name: Build Flutter App
+
+# Builds the native PureVerse Flutter app (mobile/) in the cloud so you can
+# download the .apk without installing the Android SDK locally.
+#
+# The backend URL is baked in at build time. Set it once in:
+#   Repo → Settings → Secrets and variables → Actions → Variables → New variable
+#   Name: API_URL   Value: https://<your-duckdns-domain>/api
+# Or pass it ad-hoc when running the workflow manually.
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'Backend API base URL (overrides the API_URL repo variable)'
+        required: false
+        default: ''
+  push:
+    branches: [ main ]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/flutter.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to publish the APK as a Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.1'
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: mobile
+        run: flutter analyze
+
+      - name: Build debug APK
+        working-directory: mobile
+        env:
+          API_URL: ${{ github.event.inputs.api_url || vars.API_URL }}
+        run: |
+          if [ -n "$API_URL" ]; then
+            echo "Building against API_URL=$API_URL"
+            flutter build apk --debug --dart-define=API_URL="$API_URL"
+          else
+            echo "::warning::No API_URL set — APK will use the emulator default and cannot reach a remote backend. Set the API_URL repo variable."
+            flutter build apk --debug
+          fi
+
+      - name: Upload APK (Actions artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PureVerse-app-debug-apk
+          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+
+      # Publish the raw .apk to a Release for a direct, login-free phone download.
+      - name: Publish APK to Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete flutter-latest --yes --cleanup-tag || true
+          gh release create flutter-latest \
+            mobile/build/app/outputs/flutter-apk/app-debug.apk \
+            --title "PureVerse App (latest build)" \
+            --notes "Tap **app-debug.apk** below to install on Android. Enable 'Install unknown apps' when prompted."

@@ -1,72 +1,202 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
 import '../../../../core/config/app_config.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/models/user_profile.dart';
+import '../../../auth/auth_controller.dart';
+import '../../../auth/sign_in_sheet.dart';
 
-/// Profile / settings. Native Google sign-in is wired in a later phase
-/// (Credential Manager → backend /auth/google). Placeholder for now.
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authControllerProvider);
+
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       appBar: AppBar(title: const Text('Profile')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.bgCard,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.glassBorder),
-            ),
-            child: Row(
+      body: auth.booting
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.accent))
+          : ListView(
+              padding: const EdgeInsets.all(20),
               children: [
-                const CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.bgElevated,
-                  child: Icon(Icons.person_rounded,
-                      color: AppColors.textMuted, size: 28),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Guest',
-                          style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700)),
-                      SizedBox(height: 2),
-                      Text('Not signed in',
-                          style: TextStyle(
-                              color: AppColors.textMuted, fontSize: 12)),
-                    ],
-                  ),
-                ),
-                FilledButton(
-                  onPressed: null, // wired in the auth phase
-                  child: const Text('Sign in'),
+                if (auth.user != null)
+                  _signedInCard(context, ref, auth.user!)
+                else
+                  _signedOutCard(context),
+                const SizedBox(height: 24),
+                _infoTile(Icons.cloud_done_rounded, 'Backend',
+                    AppConfig.isProduction ? 'Production' : 'Local dev'),
+                _infoTile(Icons.link_rounded, 'API', AppConfig.apiBaseUrl),
+                const SizedBox(height: 24),
+                const Center(
+                  child: Text('PureVerse • v1.0.0',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _signedInCard(BuildContext context, WidgetRef ref, UserProfile user) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.glassBorder),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: AppColors.bgElevated,
+                backgroundImage: user.avatar.isNotEmpty
+                    ? CachedNetworkImageProvider(user.avatar)
+                    : null,
+                child: user.avatar.isEmpty
+                    ? const Icon(Icons.person_rounded,
+                        color: AppColors.textMuted, size: 28)
+                    : null,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(user.name,
+                              style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700),
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        if (user.isGuest) ...[
+                          const SizedBox(width: 8),
+                          _guestBadge(),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(user.isGuest ? 'Guest profile' : user.email,
+                        style: const TextStyle(
+                            color: AppColors.textMuted, fontSize: 12),
+                        overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-          _infoTile(Icons.cloud_done_rounded, 'Backend',
-              AppConfig.isProduction ? 'Production' : 'Local dev'),
-          _infoTile(Icons.link_rounded, 'API', AppConfig.apiBaseUrl),
-          const SizedBox(height: 24),
-          const Center(
-            child: Text('PureVerse • v1.0.0',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _countChip('Watchlist', user.counts.watchlist),
+              const SizedBox(width: 10),
+              _countChip('Favorites', user.counts.favorites),
+              const SizedBox(width: 10),
+              _countChip('History', user.counts.history),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => ref.read(authControllerProvider.notifier).signOut(),
+              icon: const Icon(Icons.logout_rounded, size: 18),
+              label: const Text('Sign out'),
+            ),
           ),
         ],
       ),
     );
   }
+
+  Widget _signedOutCard(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.glassBorder),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: const BoxDecoration(
+                color: AppColors.accentSubtle, shape: BoxShape.circle),
+            child: const Icon(Icons.person_outline_rounded,
+                color: AppColors.accent, size: 30),
+          ),
+          const SizedBox(height: 14),
+          const Text('Not signed in',
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          const Text('Sign in to sync your watchlist and history.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => showSignInSheet(context),
+              child: const Text('Sign in'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _guestBadge() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppColors.accentSubtle,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Text('GUEST',
+            style: TextStyle(
+                color: AppColors.accent,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1)),
+      );
+
+  Widget _countChip(String label, int value) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.bgElevated,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              Text('$value',
+                  style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 2),
+              Text(label,
+                  style: const TextStyle(
+                      color: AppColors.textMuted, fontSize: 11)),
+            ],
+          ),
+        ),
+      );
 
   Widget _infoTile(IconData icon, String label, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),

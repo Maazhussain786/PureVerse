@@ -17,6 +17,16 @@ class AppConfig {
     defaultValue: 'http://10.0.2.2:5000/api',
   );
 
+  /// The **web** OAuth client ID, used as the Google Sign-In `serverClientId`
+  /// so the ID token's audience matches what the backend verifies. The Android
+  /// OAuth client (package + SHA-1) must also exist in the same Google Cloud
+  /// project for native sign-in to succeed — see mobile/README auth notes.
+  static const String googleServerClientId = String.fromEnvironment(
+    'GOOGLE_SERVER_CLIENT_ID',
+    defaultValue:
+        '553856787593-itv0geik72fmkq7par00j8o4rljiqjl6.apps.googleusercontent.com',
+  );
+
   /// socket.io root (REST base with the trailing /api stripped).
   static String get socketBaseUrl =>
       apiBaseUrl.replaceFirst(RegExp(r'/api/?$'), '');

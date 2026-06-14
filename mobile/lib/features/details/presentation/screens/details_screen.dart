@@ -6,6 +6,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/models/media_item.dart';
 import '../../../../core/models/media_details.dart';
 import '../../../../shared/providers/api_providers.dart';
+import '../../../auth/auth_controller.dart';
+import '../../../auth/sign_in_sheet.dart';
 import '../../../player/presentation/screens/embed_player_screen.dart';
 
 class DetailsScreen extends ConsumerWidget {
@@ -122,6 +124,8 @@ class DetailsScreen extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 16),
+          _LibraryActions(item: d.base),
+          const SizedBox(height: 12),
           if (isPlayable)
             SizedBox(
               width: double.infinity,
@@ -332,4 +336,93 @@ class DetailsScreen extends ConsumerWidget {
           ],
         ),
       );
+}
+
+/// Watchlist + Favorite toggles backed by the synced user library. Prompts
+/// sign-in when tapped while signed out.
+class _LibraryActions extends ConsumerWidget {
+  final MediaItem item;
+  const _LibraryActions({required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lib = ref.watch(userLibraryProvider).valueOrNull;
+    final inWatch = lib?.inWatchlist(item.id) ?? false;
+    final inFav = lib?.inFavorites(item.id) ?? false;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _btn(
+            icon: inWatch
+                ? Icons.bookmark_rounded
+                : Icons.bookmark_border_rounded,
+            label: inWatch ? 'In Watchlist' : 'Watchlist',
+            active: inWatch,
+            onTap: () => _toggle(context, ref, watchlist: true, isIn: inWatch),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _btn(
+            icon: inFav
+                ? Icons.favorite_rounded
+                : Icons.favorite_border_rounded,
+            label: inFav ? 'Favorited' : 'Favorite',
+            active: inFav,
+            onTap: () => _toggle(context, ref, watchlist: false, isIn: inFav),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _toggle(BuildContext context, WidgetRef ref,
+      {required bool watchlist, required bool isIn}) async {
+    if (!ref.read(authControllerProvider).isSignedIn) {
+      showSignInSheet(context);
+      return;
+    }
+    final api = ref.read(apiClientProvider);
+    try {
+      if (watchlist) {
+        if (isIn) {
+          await api.removeWatchlist(item.id);
+        } else {
+          await api.addWatchlist(item);
+        }
+      } else {
+        if (isIn) {
+          await api.removeFavorite(item.id);
+        } else {
+          await api.addFavorite(item);
+        }
+      }
+      ref.invalidate(userLibraryProvider);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
+  Widget _btn({
+    required IconData icon,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    final color = active ? AppColors.accent : AppColors.textPrimary;
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18, color: color),
+      label: Text(label,
+          style: TextStyle(color: color), overflow: TextOverflow.ellipsis),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(
+            color: active ? AppColors.accent : AppColors.glassBorder),
+      ),
+    );
+  }
 }
