@@ -128,8 +128,11 @@ export async function resolveVidSrcStream(
         const d = await getTmdbDetails('tv', rawId);
         searchTitle = d?.title || '';
         altTitle = (d as any)?.originalTitle || '';
-      } catch (e) {
-        console.error('Failed to load TMDB anime title for streaming', e);
+      } catch (e: any) {
+        console.error(
+          '[anime] TMDB title lookup failed:',
+          e?.response?.status || e?.message
+        );
       }
     }
 
