@@ -11,6 +11,8 @@ import {
   searchTrending,
   getMediaDetails,
   getMediaStream,
+  getSubtitles,
+  getSubtitleFile,
   getSeasonEpisodes,
   getTopRated,
   getNowPlaying,
@@ -74,6 +76,8 @@ router.get('/search/trending', searchTrending);
 router.get('/media/details/:type/:id', getMediaDetails);
 router.get('/media/stream/:type/:id', getMediaStream);
 router.get('/media/recommendations/:type/:id', getRecommendations);
+router.get('/subtitles/file', getSubtitleFile);
+router.get('/subtitles/:type/:id', getSubtitles);
 router.get('/tv/:id/season/:season', getSeasonEpisodes);
 
 // ─── Anime native stream + Anikoto proxy ──────────────────

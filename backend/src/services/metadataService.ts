@@ -231,6 +231,25 @@ export async function getTmdbDetails(
   return details;
 }
 
+// ─── IMDB id (for subtitle lookup) ────────────────────────
+export async function getImdbId(
+  type: 'movie' | 'tv',
+  tmdbId: string
+): Promise<string | null> {
+  const cacheKey = `imdb_${type}_${tmdbId}`;
+  const cached = cache.get<string>(cacheKey);
+  if (cached !== undefined) return cached || null;
+  try {
+    const res = await tmdbApi.get(`/${type}/${tmdbId}/external_ids`);
+    const imdb = (res.data?.imdb_id as string) || '';
+    cache.set(cacheKey, imdb, 86400);
+    return imdb || null;
+  } catch {
+    cache.set(cacheKey, '', 3600);
+    return null;
+  }
+}
+
 // ─── Season Episodes ──────────────────────────────────────
 export async function fetchSeasonEpisodes(
   tmdbId: string,

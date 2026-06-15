@@ -19,6 +19,11 @@ import {
 } from '../services/metadataService';
 import { getAnimeDetails } from '../services/animeService';
 import { resolveVidSrcStream } from '../scrapers/vidsrc';
+import {
+  fetchSubtitleCandidates,
+  fetchVtt,
+  isAllowedSubLink,
+} from '../services/subtitleService';
 import { getRecentAnime, getAnimeSeries } from '../services/anikotoService';
 import { updateProgress } from '../services/progressTracker';
 
@@ -285,6 +290,62 @@ export const getMediaStream = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Stream error:', error?.message || error);
     res.status(500).json({ success: false, message: 'Failed to resolve stream' });
+  }
+};
+
+// ─── Subtitles (movies / TV, via OpenSubtitles) ──────────
+// Returns a list of { lang, url } where url proxies to getSubtitleFile (VTT).
+// Called by the player AFTER playback starts so the stream call stays fast.
+export const getSubtitles = async (req: Request, res: Response) => {
+  try {
+    const type = req.params.type as string;
+    if (type !== 'movie' && type !== 'tv') {
+      res.json({ success: true, data: [] });
+      return;
+    }
+    const tmdbId = (req.params.id as string).replace('tmdb_', '');
+    const season = req.query.season ? parseInt(req.query.season as string, 10) : undefined;
+    const episode = req.query.episode ? parseInt(req.query.episode as string, 10) : undefined;
+
+    const candidates = await fetchSubtitleCandidates(
+      type as 'movie' | 'tv',
+      tmdbId,
+      season,
+      episode
+    );
+    const proto = (req.get('x-forwarded-proto') || req.protocol).split(',')[0];
+    const base = `${proto}://${req.get('host')}`;
+    const data = candidates.map((c) => ({
+      lang: c.lang,
+      url: `${base}/api/subtitles/file?u=${encodeURIComponent(c.downloadLink)}`,
+    }));
+    res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Subtitles error:', error?.message || error);
+    res.json({ success: true, data: [] }); // never block playback on subs
+  }
+};
+
+// Proxy: download the OpenSubtitles .gz, gunzip + convert to WebVTT, serve it.
+export const getSubtitleFile = async (req: Request, res: Response) => {
+  try {
+    const url = req.query.u as string;
+    if (!url || !isAllowedSubLink(url)) {
+      res.status(400).send('Invalid subtitle url');
+      return;
+    }
+    const vtt = await fetchVtt(url);
+    if (!vtt) {
+      res.status(502).send('Could not fetch subtitle');
+      return;
+    }
+    res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.send(vtt);
+  } catch (error: any) {
+    console.error('Subtitle file error:', error?.message || error);
+    res.status(502).send('Subtitle error');
   }
 };
 
