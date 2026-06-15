@@ -28,10 +28,15 @@ export async function resolveVidSrcStream(
 
   if (type === 'movie') {
     // ── MOVIE servers (film/TV catalogue providers — kept separate from anime) ──
-    // Ordered ad-clean FIRST. VidLink/VidFast are "premium API" embeds that
-    // play fine inside a sandboxed iframe (no popup/redirect ads). VidSrc,
-    // 2Embed and MultiEmbed are ad-heavy and demand "Please Disable Sandbox",
-    // so they sit lower — reachable via Switch Server + the Ad-Block toggle.
+    // EzVid (ezvidapi) FIRST: a maintained aggregator whose embed handles HLS,
+    // subtitles and multi-provider auto-failover for us. The rest are kept as
+    // Switch-Server fallbacks. Ad-clean providers next; ad-heavy ones lower.
+    sources.push({
+      server: 'EzVid',
+      quality: 'Auto',
+      url: `https://ezvidapi.com/embed/movie/${rawId}`,
+      type: 'embed',
+    });
     sources.push(
       {
         server: 'VidLink',
@@ -66,9 +71,15 @@ export async function resolveVidSrcStream(
     );
   } else if (type === 'tv') {
     // ── TV servers (film/TV catalogue providers — kept separate from anime) ──
-    // Ad-clean providers first (see movie note above).
+    // EzVid (ezvidapi) first (subtitles + auto-failover); rest are fallbacks.
     const s = season || '1';
     const e = episode || '1';
+    sources.push({
+      server: 'EzVid',
+      quality: 'Auto',
+      url: `https://ezvidapi.com/embed/tv/${rawId}/${s}/${e}`,
+      type: 'embed',
+    });
     sources.push(
       {
         server: 'VidLink',
@@ -105,13 +116,18 @@ export async function resolveVidSrcStream(
     let tmdbId = rawId;
     let searchTitle = '';
     let altTitle = '';
+    // HiAnime (aniwatch) is currently broken upstream, so it's OFF by default —
+    // skipping it keeps anime fast and avoids error-log noise. Flip
+    // ENABLE_HIANIME=true once aniwatch can parse the live site again, and the
+    // native SUB/DUB path lights up automatically.
+    const hiAnimeEnabled = process.env.ENABLE_HIANIME === 'true';
 
     if (id.startsWith('mal_')) {
       try {
         const animeDetails = await getAnimeDetails(rawId);
         searchTitle = animeDetails?.title || '';
         altTitle = animeDetails?.originalTitle || '';
-        // Map to a TMDB id for the iframe fallback servers.
+        // Map to a TMDB id for the iframe servers (needed regardless of HiAnime).
         if (animeDetails && animeDetails.title) {
           const tmdbResults = await searchTmdb(animeDetails.title);
           const tvResult = tmdbResults.find(r => r.type === 'tv' || r.type === 'anime');
@@ -122,8 +138,8 @@ export async function resolveVidSrcStream(
       } catch (e) {
         console.error('Failed to map Anime MAL ID to TMDB ID for streaming', e);
       }
-    } else {
-      // TMDB-sourced anime — pull the title for the HiAnime search.
+    } else if (hiAnimeEnabled) {
+      // The title is only needed for the HiAnime search.
       try {
         const d = await getTmdbDetails('tv', rawId);
         searchTitle = d?.title || '';
@@ -136,10 +152,13 @@ export async function resolveVidSrcStream(
       }
     }
 
-    // ── PRIMARY: HiAnime direct stream (real SUB + DUB + subtitle tracks) ──
+    // ── PRIMARY (optional): HiAnime direct stream (real SUB + DUB + subtitles) ──
     const epNum = parseInt(episode || '1', 10) || 1;
-    let direct = searchTitle ? await fetchHiAnimeStream(searchTitle, epNum) : null;
-    if (!direct && altTitle && altTitle.toLowerCase() !== searchTitle.toLowerCase()) {
+    let direct = hiAnimeEnabled && searchTitle
+        ? await fetchHiAnimeStream(searchTitle, epNum)
+        : null;
+    if (hiAnimeEnabled && !direct && altTitle &&
+        altTitle.toLowerCase() !== searchTitle.toLowerCase()) {
       direct = await fetchHiAnimeStream(altTitle, epNum);
     }
     if (direct) {
@@ -164,10 +183,16 @@ export async function resolveVidSrcStream(
       const e = episode || '1';
 
       // ── ANIME servers (kept SEPARATE from movie/TV) ──
-      // Anime is mapped onto a TMDB TV id, so these are the providers that
-      // carry anime under their /tv/ endpoint with built-in sub/dub switching.
-      // NOTE: a dedicated HiAnime/Vidstream-style player keys off AniList/MAL
-      // ids (not TMDB) and needs a mapping layer — tracked as a follow-up.
+      // Anime is mapped onto a TMDB TV id. EzVid (ezvidapi) first — its embed
+      // handles HLS + subtitles + sub/dub + auto-failover; the rest are
+      // Switch-Server fallbacks.
+      sources.push({
+        server: 'EzVid',
+        quality: 'Auto',
+        url: `https://ezvidapi.com/embed/tv/${tmdbId}/${s}/${e}`,
+        type: 'embed',
+        category: 'multi',
+      });
       sources.push(
         {
           server: 'VidLink',
