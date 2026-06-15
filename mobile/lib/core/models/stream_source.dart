@@ -5,6 +5,7 @@ class StreamSource {
   final String url; // embed URL or .m3u8 link
   final String type; // 'embed' | 'direct'
   final String? category; // 'sub' | 'dub' | 'multi'
+  final Map<String, String> headers; // for direct .m3u8 (Referer/Origin/UA)
 
   const StreamSource({
     required this.server,
@@ -12,9 +13,11 @@ class StreamSource {
     required this.url,
     required this.type,
     this.category,
+    this.headers = const {},
   });
 
   bool get isEmbed => type == 'embed';
+  bool get isDirect => type == 'direct';
 
   factory StreamSource.fromJson(Map<String, dynamic> j) => StreamSource(
         server: (j['server'] ?? '').toString(),
@@ -22,6 +25,10 @@ class StreamSource {
         url: (j['url'] ?? '').toString(),
         type: (j['type'] ?? 'embed').toString(),
         category: j['category']?.toString(),
+        headers: (j['headers'] as Map?)?.map(
+              (k, v) => MapEntry(k.toString(), v.toString()),
+            ) ??
+            const {},
       );
 }
 

@@ -1,14 +1,9 @@
-import { StreamPayload } from '../models/media';
+import { StreamPayload, StreamSource, Subtitle } from '../models/media';
 import { getAnimeDetails } from '../services/animeService';
-import { searchTmdb } from '../services/metadataService';
+import { searchTmdb, getTmdbDetails } from '../services/metadataService';
+import { fetchHiAnimeStream } from '../services/aniwatchService';
 
-type Source = {
-  server: string;
-  quality: string;
-  url: string;
-  type: 'embed';
-  category?: 'sub' | 'dub' | 'multi';
-};
+type Source = StreamSource;
 
 /**
  * Generates embed URLs from multiple working providers.
@@ -29,6 +24,7 @@ export async function resolveVidSrcStream(
 ): Promise<StreamPayload> {
   const rawId = id.replace('tmdb_', '').replace('mal_', '');
   const sources: Source[] = [];
+  let subtitles: Subtitle[] = [];
 
   if (type === 'movie') {
     // ── MOVIE servers (film/TV catalogue providers — kept separate from anime) ──
@@ -107,11 +103,15 @@ export async function resolveVidSrcStream(
     );
   } else if (type === 'anime') {
     let tmdbId = rawId;
+    let searchTitle = '';
+    let altTitle = '';
 
-    // Only map if it's a MAL ID. If it's from TMDB, we already have the TMDB ID.
     if (id.startsWith('mal_')) {
       try {
         const animeDetails = await getAnimeDetails(rawId);
+        searchTitle = animeDetails?.title || '';
+        altTitle = animeDetails?.originalTitle || '';
+        // Map to a TMDB id for the iframe fallback servers.
         if (animeDetails && animeDetails.title) {
           const tmdbResults = await searchTmdb(animeDetails.title);
           const tvResult = tmdbResults.find(r => r.type === 'tv' || r.type === 'anime');
@@ -122,8 +122,40 @@ export async function resolveVidSrcStream(
       } catch (e) {
         console.error('Failed to map Anime MAL ID to TMDB ID for streaming', e);
       }
+    } else {
+      // TMDB-sourced anime — pull the title for the HiAnime search.
+      try {
+        const d = await getTmdbDetails('tv', rawId);
+        searchTitle = d?.title || '';
+        altTitle = (d as any)?.originalTitle || '';
+      } catch (e) {
+        console.error('Failed to load TMDB anime title for streaming', e);
+      }
     }
 
+    // ── PRIMARY: HiAnime direct stream (real SUB + DUB + subtitle tracks) ──
+    const epNum = parseInt(episode || '1', 10) || 1;
+    let direct = searchTitle ? await fetchHiAnimeStream(searchTitle, epNum) : null;
+    if (!direct && altTitle && altTitle.toLowerCase() !== searchTitle.toLowerCase()) {
+      direct = await fetchHiAnimeStream(altTitle, epNum);
+    }
+    if (direct) {
+      for (const s of direct.sources) {
+        sources.push({
+          server: `HiAnime ${s.category.toUpperCase()}`,
+          quality: s.quality,
+          url: s.url,
+          type: 'direct',
+          category: s.category,
+          headers: direct.headers,
+        });
+      }
+      if (direct.subtitles.length) {
+        subtitles = direct.subtitles.map((t) => ({ lang: t.lang, url: t.url }));
+      }
+    }
+
+    // ── FALLBACK: iframe embeds (always available; provider-side sub/dub) ──
     if (tmdbId) {
       const s = season || '1';
       const e = episode || '1';
@@ -168,6 +200,6 @@ export async function resolveVidSrcStream(
 
   return {
     sources,
-    subtitles: [],
+    subtitles,
   };
 }

@@ -67,7 +67,6 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
   String _status = 'Loading…';
   List<StreamSource> _servers = const [];
   int _serverIndex = 0;
-  ExtractedStream? _stream;
 
   // Mutable playback target (season/episode can change from inside the player).
   late int? _season = widget.season;
@@ -88,6 +87,12 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
   String _qualityId = 'auto';
   String _audioId = 'auto';
   String _subKey = 'off'; // off | emb:<id> | ext:<url>
+
+  // Hybrid direct (HiAnime) path: server-scraped sub/dub streams + subtitles.
+  List<StreamSource> _directSources = const [];
+  List<ExtractedSubtitle> _externalSubs = const [];
+  String? _currentCategory; // 'sub' | 'dub' while a direct source is playing
+  bool _playedOnce = false; // guards the direct→embed error fallback
 
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
@@ -114,7 +119,16 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
       if (mounted) setState(() => _duration = d);
     }));
     _subs.add(_player.stream.playing.listen((p) {
-      if (mounted) setState(() => _playing = p);
+      if (!mounted) return;
+      if (p) _playedOnce = true;
+      setState(() => _playing = p);
+    }));
+    // If a direct (HiAnime) stream errors before it ever played (expired URL,
+    // Cloudflare block), fall back to the iframe embeds.
+    _subs.add(_player.stream.error.listen((_) {
+      if (mounted && _currentCategory != null && !_playedOnce) {
+        _directFailover();
+      }
     }));
     _subs.add(_player.stream.buffering.listen((b) {
       if (mounted) setState(() => _buffering = b);
@@ -233,17 +247,113 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
             season: _season,
             episode: _episode,
           );
+      if (!mounted) return;
+      final direct =
+          payload.sources.where((s) => s.isDirect && s.url.isNotEmpty).toList();
       final embeds = payload.sources.where((s) => s.isEmbed).toList();
-      if (embeds.isEmpty) {
-        _fallback();
+      setState(() {
+        _directSources = direct;
+        _servers = embeds;
+        _externalSubs = payload.subtitles
+            .where((s) => s.url.isNotEmpty)
+            .map((s) => ExtractedSubtitle(s.lang, _langCode(s.lang), s.url))
+            .toList();
+      });
+
+      // PRIMARY: a server-scraped direct stream (HiAnime sub/dub + subtitles).
+      if (direct.isNotEmpty) {
+        final cat = direct.any((s) => s.category == 'sub')
+            ? 'sub'
+            : (direct.first.category ?? 'sub');
+        await _playDirect(cat);
         return;
       }
-      if (!mounted) return;
-      setState(() => _servers = embeds);
-      _extractServer(0);
+      // FALLBACK: extract a stream from an iframe embed on-device.
+      if (embeds.isNotEmpty) {
+        _extractServer(0);
+        return;
+      }
+      _fallback();
     } catch (_) {
       _fallback();
     }
+  }
+
+  /// Play a direct (already-resolved) HLS source for the given audio category.
+  Future<void> _playDirect(String category) async {
+    final src = _directSources.firstWhere(
+      (s) => s.category == category,
+      orElse: () => _directSources.first,
+    );
+    setState(() {
+      _currentCategory = src.category;
+      _phase = _Phase.extracting;
+      _status = 'Loading ${src.server}…';
+      _qualityId = 'auto';
+      _audioId = 'auto';
+      _subKey = 'off';
+      _videoTracks = [];
+      _audioTracks = [];
+      _subTracks = [];
+    });
+    try {
+      await _player.open(
+        Media(src.url, httpHeaders: src.headers),
+        play: true,
+      );
+    } catch (_) {
+      _directFailover();
+      return;
+    }
+    if (!mounted) return;
+    if (_resumeAt > const Duration(seconds: 5)) {
+      await _player.seek(_resumeAt);
+    }
+    setState(() => _phase = _Phase.playing);
+    // English subs by default for subbed anime.
+    if (category == 'sub') _autoEnableEnglishSub();
+  }
+
+  /// Switch SUB ⇄ DUB, preserving the current position.
+  void _selectCategory(String category) {
+    if (category == _currentCategory) return;
+    _saveProgress();
+    _resumeAt = _position;
+    _playDirect(category);
+  }
+
+  void _autoEnableEnglishSub() {
+    if (_subKey != 'off') return;
+    for (final s in _externalSubs) {
+      if (s.language == 'en' || s.label.toLowerCase().contains('eng')) {
+        _selectExternalSub(s);
+        return;
+      }
+    }
+  }
+
+  /// Direct stream failed before playing — drop to the iframe embeds.
+  void _directFailover() {
+    if (!mounted) return;
+    _currentCategory = null;
+    if (_servers.isNotEmpty) {
+      _extractServer(0);
+    } else {
+      _fallback();
+    }
+  }
+
+  static String _langCode(String lang) {
+    final l = lang.toLowerCase();
+    if (l.startsWith('eng')) return 'en';
+    if (l.startsWith('spa')) return 'es';
+    if (l.startsWith('fre') || l.startsWith('fra')) return 'fr';
+    if (l.startsWith('ger') || l.startsWith('deu')) return 'de';
+    if (l.startsWith('por')) return 'pt';
+    if (l.startsWith('ara')) return 'ar';
+    if (l.startsWith('hin')) return 'hi';
+    if (l.startsWith('jpn') || l.startsWith('jap')) return 'ja';
+    return 'und';
   }
 
   Future<void> _extractServer(int index) async {
@@ -253,6 +363,7 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
     }
     setState(() {
       _serverIndex = index;
+      _currentCategory = null; // leaving the direct path
       _phase = _Phase.extracting;
       _status = 'Finding a stream on ${_servers[index].server}…';
       _qualityId = 'auto';
@@ -276,7 +387,9 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
       return;
     }
 
-    _stream = result;
+    if (result.subtitles.isNotEmpty) {
+      setState(() => _externalSubs = result.subtitles);
+    }
     await _player.open(
       Media(result.url, httpHeaders: result.headers),
       play: true,
@@ -503,15 +616,24 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
   }
 
   String _episodeLabel() {
+    final tag = _currentCategory == 'sub'
+        ? '  ·  SUB'
+        : _currentCategory == 'dub'
+            ? '  ·  DUB'
+            : '';
     if (_episode != null) {
       final s = _season != null ? 'S$_season ' : '';
       final t = (_episodeTitle != null && _episodeTitle!.isNotEmpty)
           ? '  •  $_episodeTitle'
           : '';
-      return '${widget.title}  •  $s' 'E$_episode$t';
+      return '${widget.title}  •  $s' 'E$_episode$t$tag';
     }
-    return widget.title;
+    return '${widget.title}$tag';
   }
+
+  /// SUB/DUB categories available from the direct (HiAnime) sources, SUB first.
+  List<String> get _directCategories =>
+      ['sub', 'dub'].where((c) => _directSources.any((s) => s.category == c)).toList();
 
   // ─── Settings sheet (quality / audio / subtitles / servers) ───
   void _openSettings() {
@@ -542,6 +664,22 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
                   ),
                 ),
                 const SizedBox(height: 18),
+
+                if (_directCategories.isNotEmpty) ...[
+                  _heading(Icons.translate_rounded, 'Audio · Sub / Dub'),
+                  const SizedBox(height: 10),
+                  Wrap(spacing: 10, runSpacing: 10, children: [
+                    for (final c in _directCategories)
+                      PlayerChip(
+                          label: c == 'sub' ? 'Subbed' : 'Dubbed',
+                          active: _currentCategory == c,
+                          onTap: () {
+                            Navigator.pop(context);
+                            _selectCategory(c);
+                          }),
+                  ]),
+                  const SizedBox(height: 22),
+                ],
 
                 _heading(Icons.high_quality_rounded, 'Quality'),
                 const SizedBox(height: 10),
@@ -602,15 +740,14 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
                           _selectEmbeddedSub(s);
                         },
                       )),
-                  ...(_stream?.subtitles ?? const <ExtractedSubtitle>[])
-                      .map((s) => PlayerChip(
-                            label: s.label,
-                            active: _subKey == 'ext:${s.url}',
-                            onTap: () {
-                              Navigator.pop(context);
-                              _selectExternalSub(s);
-                            },
-                          )),
+                  ..._externalSubs.map((s) => PlayerChip(
+                        label: s.label,
+                        active: _subKey == 'ext:${s.url}',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _selectExternalSub(s);
+                        },
+                      )),
                 ]),
 
                 if (_servers.length > 1) ...[

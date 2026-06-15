@@ -49,6 +49,9 @@ export interface StreamSource {
   // Audio category for grouped server pickers (anime SUB/DUB sections).
   // 'multi' = provider has in-player audio switching.
   category?: 'sub' | 'dub' | 'multi';
+  // HTTP headers a direct (.m3u8) source needs (Referer/Origin/User-Agent).
+  // Only set for `type: 'direct'` streams scraped server-side.
+  headers?: Record<string, string>;
 }
 
 export interface Subtitle {
