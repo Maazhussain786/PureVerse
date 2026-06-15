@@ -38,6 +38,16 @@ android {
     }
 
     signingConfigs {
+        // Fixed debug keystore committed to the repo so every build (local AND
+        // CI) is signed with the SAME key — required for Google Sign-In, whose
+        // Android OAuth client is pinned to one SHA-1. Debug keys are not secret
+        // (standard password "android"); never do this with a release key.
+        getByName("debug") {
+            storeFile = file("aniverse-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         create("release") {
             val storeFilePath = keystoreProperties["storeFile"] as String?
             if (storeFilePath != null) {
