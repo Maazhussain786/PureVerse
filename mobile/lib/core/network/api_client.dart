@@ -87,6 +87,20 @@ class ApiClient {
     return StreamPayload.fromJson(_asMap(data));
   }
 
+  /// External subtitle tracks for movies / TV (OpenSubtitles, proxied as VTT).
+  Future<List<Subtitle>> getSubtitles(String type, String id,
+      {int? season, int? episode}) async {
+    final query = <String, dynamic>{};
+    if (season != null) query['season'] = season;
+    if (episode != null) query['episode'] = episode;
+    final data = await _get('/subtitles/$type/$id', query: query);
+    if (data is! List) return const [];
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(Subtitle.fromJson)
+        .toList();
+  }
+
   Future<List<Episode>> getSeasonEpisodes(String tvId, int season) async {
     final data = await _get('/tv/$tvId/season/$season');
     if (data is! List) return const [];

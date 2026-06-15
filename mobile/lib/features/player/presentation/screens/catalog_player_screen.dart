@@ -224,9 +224,17 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
 
     await set('hwdec', 'auto-safe'); // GPU decode, falls back to software
     await set('cache', 'yes');
-    await set('demuxer-readahead-secs', '30'); // prefetch ~30s ahead
+    await set('demuxer-readahead-secs', '20'); // prefetch ahead during playback
     await set('demuxer-max-back-bytes', '${16 * 1024 * 1024}');
     await set('network-timeout', '30');
+
+    // ── Fast start: don't wait for a full cache before showing the first frame,
+    // and cut the ffmpeg format-probe that dominates HLS startup latency. This
+    // is the "slow the first time, fast after seeking" symptom.
+    await set('cache-pause-initial', 'no');
+    await set('demuxer-lavf-analyzeduration', '1'); // seconds (default 5)
+    await set('demuxer-lavf-probesize', '2000000'); // ~2 MB (default ~5 MB)
+
     // Reconnect transparently on transient HTTP/CDN errors.
     await set('stream-lavf-o',
         'reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=5');
@@ -321,6 +329,7 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
     setState(() => _phase = _Phase.playing);
     // English subs by default for subbed anime.
     if (category == 'sub') _autoEnableEnglishSub();
+    _loadBackendSubtitles();
   }
 
   /// Switch SUB ⇄ DUB, preserving the current position.
@@ -339,6 +348,32 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
         return;
       }
     }
+  }
+
+  /// Movies/TV: pull external subtitles (OpenSubtitles, English-first) from the
+  /// backend once playback has started, and merge them into the menu. Runs in
+  /// the background so it never delays the stream starting.
+  Future<void> _loadBackendSubtitles() async {
+    if (widget.mediaType != 'movie' && widget.mediaType != 'tv') return;
+    try {
+      final subs = await ref.read(apiClientProvider).getSubtitles(
+            widget.mediaType,
+            widget.mediaId,
+            season: _season,
+            episode: _episode,
+          );
+      if (!mounted || subs.isEmpty) return;
+      final seen = {for (final s in _externalSubs) s.url};
+      final merged = [
+        ..._externalSubs,
+        for (final s in subs)
+          if (s.url.isNotEmpty && seen.add(s.url))
+            ExtractedSubtitle(s.lang, _langCode(s.lang), s.url),
+      ]..sort((a, b) =>
+          (b.language == 'en' ? 1 : 0) - (a.language == 'en' ? 1 : 0));
+      setState(() => _externalSubs = merged);
+      if (_subKey == 'off') _autoEnableEnglishSub();
+    } catch (_) {/* subtitles are best-effort */}
   }
 
   /// Direct stream failed before playing — drop to the embed/iframe path.
@@ -405,6 +440,7 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
     }
     if (!mounted) return;
     setState(() => _phase = _Phase.playing);
+    _loadBackendSubtitles();
   }
 
   /// Hand off to the iframe player when no direct stream is available.

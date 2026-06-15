@@ -182,6 +182,13 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
     _fetchGrid(_page, append: true);
   }
 
+  void _openSearch() {
+    showSearch<void>(
+      context: context,
+      delegate: _BrowseSearchDelegate(ref, widget.category, _cfg.heading),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final hero = ref.watch(endpointListProvider(_cfg.heroEndpoint));
@@ -193,6 +200,7 @@ class _BrowseScreenState extends ConsumerState<BrowseScreen> {
           SliverToBoxAdapter(
             child: _CategoryHero(
               cfg: _cfg,
+              onSearch: _openSearch,
               item: hero.valueOrNull?.isNotEmpty == true
                   ? hero.value!.first
                   : null,
@@ -431,7 +439,9 @@ class _LazyRow extends ConsumerWidget {
 class _CategoryHero extends StatelessWidget {
   final _CategoryCfg cfg;
   final MediaItem? item;
-  const _CategoryHero({required this.cfg, required this.item});
+  final VoidCallback onSearch;
+  const _CategoryHero(
+      {required this.cfg, required this.item, required this.onSearch});
 
   @override
   Widget build(BuildContext context) {
@@ -459,6 +469,21 @@ class _CategoryHero extends StatelessWidget {
                   AppColors.bgPrimary,
                 ],
                 stops: const [0.0, 0.5, 1.0],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            right: 8,
+            child: SafeArea(
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.35),
+                shape: const CircleBorder(),
+                child: IconButton(
+                  icon: const Icon(Icons.search_rounded, color: Colors.white),
+                  tooltip: 'Search ${cfg.heading}',
+                  onPressed: onSearch,
+                ),
               ),
             ),
           ),
@@ -530,6 +555,116 @@ class _CategoryHero extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Category-scoped search (opened from the hero search button) ───
+class _BrowseSearchDelegate extends SearchDelegate<void> {
+  final WidgetRef ref;
+  final String category; // movies | series | anime
+  final String heading;
+  _BrowseSearchDelegate(this.ref, this.category, this.heading)
+      : super(searchFieldLabel: 'Search $heading…');
+
+  String get _type => category == 'movies'
+      ? 'movie'
+      : category == 'series'
+          ? 'tv'
+          : 'anime';
+
+  // Dedup identical-query rebuilds (buildSuggestions fires on every keystroke).
+  String? _lastQuery;
+  Future<List<MediaItem>>? _future;
+  Future<List<MediaItem>> _search(String q) {
+    if (q != _lastQuery) {
+      _lastQuery = q;
+      _future = ref.read(apiClientProvider).search(q);
+    }
+    return _future!;
+  }
+
+  @override
+  ThemeData appBarTheme(BuildContext context) {
+    final base = Theme.of(context);
+    return base.copyWith(
+      scaffoldBackgroundColor: AppColors.bgPrimary,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppColors.bgPrimary,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+      ),
+      inputDecorationTheme: const InputDecorationTheme(
+        hintStyle: TextStyle(color: AppColors.textMuted),
+        border: InputBorder.none,
+      ),
+      textTheme: base.textTheme.copyWith(
+        titleLarge: const TextStyle(color: AppColors.textPrimary, fontSize: 18),
+      ),
+    );
+  }
+
+  @override
+  List<Widget> buildActions(BuildContext context) => [
+        if (query.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.close_rounded),
+            onPressed: () => query = '',
+          ),
+      ];
+
+  @override
+  Widget buildLeading(BuildContext context) => IconButton(
+        icon: const Icon(Icons.arrow_back_rounded),
+        onPressed: () => close(context, null),
+      );
+
+  @override
+  Widget buildResults(BuildContext context) => _grid(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _grid(context);
+
+  Widget _grid(BuildContext context) {
+    final q = query.trim();
+    if (q.length < 2) {
+      return const Center(
+        child: Text('Type at least 2 characters',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+      );
+    }
+    return Container(
+      color: AppColors.bgPrimary,
+      child: FutureBuilder<List<MediaItem>>(
+        future: _search(q),
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const Center(
+                child: CircularProgressIndicator(color: AppColors.accent));
+          }
+          final list =
+              (snap.data ?? const <MediaItem>[]).where((m) => m.type == _type).toList();
+          if (list.isEmpty) {
+            return Center(
+              child: Text('No $heading found for “$q”',
+                  style:
+                      const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+            );
+          }
+          return GridView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              childAspectRatio: 0.5,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 16,
+            ),
+            itemCount: list.length,
+            itemBuilder: (_, i) =>
+                MediaPosterCard(item: list[i], width: double.infinity),
+          );
+        },
       ),
     );
   }
