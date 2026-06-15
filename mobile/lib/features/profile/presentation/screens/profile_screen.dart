@@ -4,8 +4,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../../core/config/app_config.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/avatars.dart';
 import '../../../../core/models/user_profile.dart';
 import '../../../../core/models/demo_media.dart';
+import '../widgets/avatar_picker_sheet.dart';
 import '../../../auth/auth_controller.dart';
 import '../../../auth/sign_in_sheet.dart';
 import '../../../user/user_state.dart';
@@ -72,17 +74,7 @@ class ProfileScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: AppColors.bgElevated,
-                backgroundImage: user.avatar.isNotEmpty
-                    ? CachedNetworkImageProvider(user.avatar)
-                    : null,
-                child: user.avatar.isEmpty
-                    ? const Icon(Icons.person_rounded,
-                        color: AppColors.textMuted, size: 28)
-                    : null,
-              ),
+              _avatar(context, ref, user),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -148,6 +140,49 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _avatar(BuildContext context, WidgetRef ref, UserProfile user) {
+    final effective =
+        user.avatar.isNotEmpty ? user.avatar : defaultAvatar(user.name);
+    return GestureDetector(
+      onTap: () => _changeAvatar(context, ref, user),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: AppColors.bgElevated,
+            backgroundImage: CachedNetworkImageProvider(renderableAvatar(effective)),
+          ),
+          Positioned(
+            right: -2,
+            bottom: -2,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppColors.accent,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.bgCard, width: 2),
+              ),
+              child: const Icon(Icons.edit_rounded,
+                  size: 11, color: AppColors.onAccent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _changeAvatar(BuildContext context, WidgetRef ref, UserProfile user) {
+    showAvatarPicker(
+      context,
+      currentAvatar:
+          user.avatar.isNotEmpty ? user.avatar : defaultAvatar(user.name),
+      onSelect: (url) => ref
+          .read(authControllerProvider.notifier)
+          .updateProfile({'avatar': url}),
     );
   }
 
