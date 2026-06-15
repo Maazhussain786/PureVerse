@@ -268,14 +268,23 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
         await _playDirect(cat);
         return;
       }
-      // FALLBACK: extract a stream from an iframe embed on-device.
-      if (embeds.isNotEmpty) {
-        _extractServer(0);
-        return;
-      }
-      _fallback();
+      _afterNoDirect();
     } catch (_) {
       _fallback();
+    }
+  }
+
+  /// No direct stream available. For anime, prefer the iframe player — the
+  /// providers (VidLink) expose sub/dub + subtitle languages in their own UI,
+  /// whereas on-device extraction yields a bare (often Japanese-only, no-subs)
+  /// stream. Movies/TV keep the native extraction path.
+  void _afterNoDirect() {
+    if (_servers.isEmpty) {
+      _fallback();
+    } else if (widget.mediaType == 'anime') {
+      _fallback();
+    } else {
+      _extractServer(0);
     }
   }
 
@@ -332,15 +341,11 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
     }
   }
 
-  /// Direct stream failed before playing — drop to the iframe embeds.
+  /// Direct stream failed before playing — drop to the embed/iframe path.
   void _directFailover() {
     if (!mounted) return;
     _currentCategory = null;
-    if (_servers.isNotEmpty) {
-      _extractServer(0);
-    } else {
-      _fallback();
-    }
+    _afterNoDirect();
   }
 
   static String _langCode(String lang) {
