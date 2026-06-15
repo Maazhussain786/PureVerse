@@ -3,6 +3,14 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config();
 
+// HiAnime rotates domains; the aniwatch package's built-in default
+// ("aniwatchtv.to") is dead, which breaks the direct anime scraper. Point it at
+// a current domain unless overridden in .env. Must run before routes (and thus
+// aniwatch) are imported below.
+if (!process.env.ANIWATCH_DOMAIN) {
+  process.env.ANIWATCH_DOMAIN = 'hianime.to';
+}
+
 import http from 'http';
 import { Server } from 'socket.io';
 import setupSockets from './sockets/roomCoordinator';
