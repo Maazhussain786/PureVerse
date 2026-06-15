@@ -1,20 +1,25 @@
 /// App-wide configuration. The backend URL is injected at build/run time so the
-/// same code targets the local dev server, the emulator, or the production
-/// DigitalOcean backend without edits.
+/// same code targets a local dev server, the emulator, or the production
+/// DigitalOcean backend.
 ///
-/// Dev (Android emulator → host machine):
-///   flutter run
-/// Production (DigitalOcean):
-///   `flutter run --dart-define=API_URL=https://your-domain/api`
+/// Override at build/run time (takes precedence over the default below):
+///   `flutter run            --dart-define=API_URL=https://your-domain/api`
 ///   `flutter build apk --release --dart-define=API_URL=https://your-domain/api`
+///
+/// IMPORTANT: a plain `flutter build apk` (no --dart-define) now ships the
+/// production URL below — that's what a real phone needs. If your DigitalOcean
+/// domain is different, change `_defaultApiUrl` (one line) or pass --dart-define.
 class AppConfig {
   AppConfig._();
 
-  /// Base REST URL, e.g. https://pureverse.duckdns.org/api
-  /// Defaults to the Android-emulator alias for the host's localhost:5000.
+  /// The production backend a real device hits when no API_URL is provided.
+  /// ⬇️  CHANGE THIS if your DigitalOcean URL differs.
+  static const String _defaultApiUrl = 'https://pureverse.duckdns.org/api';
+
+  /// Base REST URL, e.g. https://pureverse.duckdns.org/api.
   static const String apiBaseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'http://10.0.2.2:5000/api',
+    defaultValue: _defaultApiUrl,
   );
 
   /// The **web** OAuth client ID, used as the Google Sign-In `serverClientId`

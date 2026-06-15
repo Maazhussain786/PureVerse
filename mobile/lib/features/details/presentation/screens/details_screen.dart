@@ -10,38 +10,49 @@ import '../../../../shared/providers/api_providers.dart';
 import '../../../auth/auth_controller.dart';
 import '../../../auth/sign_in_sheet.dart';
 import '../../../user/user_state.dart';
-import '../../../player/presentation/screens/embed_player_screen.dart';
+import '../../../player/presentation/screens/catalog_player_screen.dart';
+
+/// Records a history entry and opens the native player. Shared by the
+/// "Watch Now" button and the per-episode tiles.
+void playMedia(BuildContext context, WidgetRef ref, MediaDetails d,
+    {int? season, int? episode, String? episodeTitle}) {
+  ref.read(userStateProvider.notifier).addToHistory(
+        WatchHistoryItem.create(
+          id: d.id,
+          type: d.type,
+          title: d.title,
+          posterUrl: d.posterUrl,
+          rating: d.rating,
+          releaseYear: d.releaseYear,
+          season: season,
+          episode: episode,
+          episodeTitle: episodeTitle,
+        ),
+      );
+  Navigator.of(context).push(MaterialPageRoute(
+    builder: (_) => CatalogPlayerScreen(
+      mediaType: d.type,
+      mediaId: d.id,
+      title: d.title,
+      posterUrl: d.posterUrl,
+      rating: d.rating,
+      releaseYear: d.releaseYear,
+      totalSeasons: d.totalSeasons,
+      season: season,
+      episode: episode,
+      episodeTitle: episodeTitle,
+    ),
+  ));
+}
 
 class DetailsScreen extends ConsumerWidget {
   final MediaItem item;
   const DetailsScreen({super.key, required this.item});
 
   void _play(BuildContext context, WidgetRef ref, MediaDetails d,
-      {int? season, int? episode, String? episodeTitle}) {
-    // Record a history entry so Continue Watching / History reflect the play.
-    ref.read(userStateProvider.notifier).addToHistory(
-          WatchHistoryItem.create(
-            id: d.id,
-            type: d.type,
-            title: d.title,
-            posterUrl: d.posterUrl,
-            rating: d.rating,
-            releaseYear: d.releaseYear,
-            season: season,
-            episode: episode,
-            episodeTitle: episodeTitle,
-          ),
-        );
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => EmbedPlayerScreen(
-        mediaType: d.type,
-        mediaId: d.id,
-        title: d.title,
-        season: season,
-        episode: episode,
-      ),
-    ));
-  }
+          {int? season, int? episode, String? episodeTitle}) =>
+      playMedia(context, ref, d,
+          season: season, episode: episode, episodeTitle: episodeTitle);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -168,15 +179,10 @@ class DetailsScreen extends ConsumerWidget {
             const SizedBox(height: 20),
             _castSection(d.cast),
           ],
-          if (episodes.isNotEmpty) ...[
+          if (d.type != 'movie' &&
+              (episodes.isNotEmpty || (d.totalSeasons ?? 0) > 0)) ...[
             const SizedBox(height: 24),
-            Text('Episodes  (${episodes.length})',
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 12),
-            ...episodes.map((e) => _episodeTile(context, ref, d, e)),
+            _EpisodesSection(details: d),
           ],
         ],
       ),
@@ -275,68 +281,6 @@ class DetailsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _episodeTile(
-      BuildContext context, WidgetRef ref, MediaDetails d, Episode e) {
-    return InkWell(
-      onTap: () => _play(context, ref, d,
-          season: e.seasonNumber,
-          episode: e.episodeNumber,
-          episodeTitle: e.title),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(
-                width: 120,
-                height: 68,
-                child: e.thumbnailUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: e.thumbnailUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (_, _) =>
-                            Container(color: AppColors.bgCard),
-                        errorWidget: (_, _, _) =>
-                            Container(color: AppColors.bgCard),
-                      )
-                    : Container(
-                        color: AppColors.bgCard,
-                        child: const Icon(Icons.play_circle_outline,
-                            color: AppColors.textMuted)),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('E${e.episodeNumber}  ${e.title}',
-                      style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  if (e.synopsis.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(e.synopsis,
-                        style: const TextStyle(
-                            color: AppColors.textMuted, fontSize: 11),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis),
-                  ],
-                ],
-              ),
-            ),
-            const Icon(Icons.play_arrow_rounded, color: AppColors.accent),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _loadingHeader() => const Padding(
         padding: EdgeInsets.all(40),
         child: Center(child: CircularProgressIndicator(color: AppColors.accent)),
@@ -429,4 +373,178 @@ class _LibraryActions extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Episode list with a season picker. The details payload preloads the latest
+/// season's episodes; switching season fetches that season on demand.
+class _EpisodesSection extends ConsumerStatefulWidget {
+  final MediaDetails details;
+  const _EpisodesSection({required this.details});
+
+  @override
+  ConsumerState<_EpisodesSection> createState() => _EpisodesSectionState();
+}
+
+class _EpisodesSectionState extends ConsumerState<_EpisodesSection> {
+  late int _season;
+
+  int get _totalSeasons => (widget.details.totalSeasons ?? 1).clamp(1, 999);
+
+  @override
+  void initState() {
+    super.initState();
+    // Mirror the web app: the details payload carries the latest season.
+    _season = _totalSeasons;
+  }
+
+  /// True when the selected season is the one already bundled in the details
+  /// payload, so no extra fetch is needed.
+  bool get _usePreloaded {
+    final eps = widget.details.episodes;
+    if (eps.isEmpty || _season != _totalSeasons) return false;
+    final sn = eps.first.seasonNumber;
+    return sn == null || sn == _season;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget body;
+    if (_usePreloaded) {
+      body = Column(children: _tiles(widget.details.episodes));
+    } else {
+      final async =
+          ref.watch(seasonEpisodesProvider('${widget.details.id}:$_season'));
+      body = async.when(
+        data: (eps) =>
+            eps.isEmpty ? _empty() : Column(children: _tiles(eps)),
+        loading: () => const Padding(
+          padding: EdgeInsets.all(28),
+          child:
+              Center(child: CircularProgressIndicator(color: AppColors.accent)),
+        ),
+        error: (_, _) => _empty(),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text('Episodes',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary)),
+            ),
+            if (_totalSeasons > 1) _seasonDropdown(),
+          ],
+        ),
+        const SizedBox(height: 12),
+        body,
+      ],
+    );
+  }
+
+  Widget _seasonDropdown() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.glassBackground,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.glassBorder),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<int>(
+            value: _season,
+            isDense: true,
+            dropdownColor: AppColors.bgElevated,
+            iconEnabledColor: AppColors.textSecondary,
+            borderRadius: BorderRadius.circular(12),
+            style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600),
+            items: [
+              for (int s = 1; s <= _totalSeasons; s++)
+                DropdownMenuItem(value: s, child: Text('Season $s')),
+            ],
+            onChanged: (v) {
+              if (v != null && v != _season) setState(() => _season = v);
+            },
+          ),
+        ),
+      );
+
+  List<Widget> _tiles(List<Episode> eps) =>
+      eps.map((e) => _episodeTile(e)).toList();
+
+  Widget _episodeTile(Episode e) {
+    return InkWell(
+      onTap: () => playMedia(context, ref, widget.details,
+          season: e.seasonNumber ?? _season,
+          episode: e.episodeNumber,
+          episodeTitle: e.title),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 120,
+                height: 68,
+                child: e.thumbnailUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: e.thumbnailUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) =>
+                            Container(color: AppColors.bgCard),
+                        errorWidget: (_, _, _) =>
+                            Container(color: AppColors.bgCard),
+                      )
+                    : Container(
+                        color: AppColors.bgCard,
+                        child: const Icon(Icons.play_circle_outline,
+                            color: AppColors.textMuted)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('E${e.episodeNumber}  ${e.title}',
+                      style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  if (e.synopsis.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(e.synopsis,
+                        style: const TextStyle(
+                            color: AppColors.textMuted, fontSize: 11),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis),
+                  ],
+                ],
+              ),
+            ),
+            const Icon(Icons.play_arrow_rounded, color: AppColors.accent),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _empty() => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 28),
+        child: Center(
+          child: Text('No episodes available for this season.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+        ),
+      );
 }

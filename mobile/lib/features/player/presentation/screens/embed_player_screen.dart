@@ -5,25 +5,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/models/stream_source.dart';
+import '../../../../core/models/watch_history.dart';
+import '../../../../features/user/user_state.dart';
 import '../../../../shared/providers/api_providers.dart';
+import '../widgets/episode_picker_sheet.dart';
 
 /// Hybrid playback: loads the provider's embed page in a hardened WebView
 /// (popups + cross-host top-frame redirects blocked) inside our own fullscreen
-/// landscape chrome. The native custom player is a later phase.
+/// landscape chrome. Used as the fallback when an on-device direct stream can't
+/// be captured; still supports in-player season + episode switching.
 class EmbedPlayerScreen extends ConsumerStatefulWidget {
   final String mediaType; // movie | tv | anime
   final String mediaId;
   final String title;
+  final String posterUrl;
+  final double rating;
+  final int releaseYear;
+  final int? totalSeasons;
   final int? season;
   final int? episode;
+  final String? episodeTitle;
 
   const EmbedPlayerScreen({
     super.key,
     required this.mediaType,
     required this.mediaId,
     required this.title,
+    this.posterUrl = '',
+    this.rating = 0,
+    this.releaseYear = 0,
+    this.totalSeasons,
     this.season,
     this.episode,
+    this.episodeTitle,
   });
 
   @override
@@ -35,6 +49,11 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   Object? _error;
   int _selected = 0;
   InAppWebViewController? _webController;
+
+  late int? _season = widget.season;
+  late int? _episode = widget.episode;
+  bool get _isSeries =>
+      widget.mediaType == 'tv' || widget.mediaType == 'anime';
 
   @override
   void initState() {
@@ -52,8 +71,8 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
       final payload = await ref.read(apiClientProvider).getStream(
             widget.mediaType,
             widget.mediaId,
-            season: widget.season,
-            episode: widget.episode,
+            season: _season,
+            episode: _episode,
           );
       if (!mounted) return;
       setState(() {
@@ -65,6 +84,41 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
+  }
+
+  void _openEpisodes() {
+    showEpisodePicker(
+      context,
+      mediaId: widget.mediaId,
+      totalSeasons: widget.totalSeasons ?? 1,
+      currentSeason: _season ?? 1,
+      currentEpisode: _episode ?? 1,
+      onSelect: _changeEpisode,
+    );
+  }
+
+  void _changeEpisode(int season, int episode, String? title) {
+    if (season == _season && episode == _episode) return;
+    setState(() {
+      _season = season;
+      _episode = episode;
+      _payload = null; // show the loader while the new source resolves
+      _error = null;
+    });
+    ref.read(userStateProvider.notifier).addToHistory(
+          WatchHistoryItem.create(
+            id: widget.mediaId,
+            type: widget.mediaType,
+            title: widget.title,
+            posterUrl: widget.posterUrl,
+            rating: widget.rating,
+            releaseYear: widget.releaseYear,
+            season: season,
+            episode: episode,
+            episodeTitle: title,
+          ),
+        );
+    _load();
   }
 
   @override
@@ -186,6 +240,13 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (_isSeries)
+              IconButton(
+                icon: const Icon(Icons.video_library_rounded,
+                    color: Colors.white),
+                tooltip: 'Episodes & seasons',
+                onPressed: _openEpisodes,
+              ),
             if (sources.length > 1) _serverMenu(sources),
           ],
         ),
@@ -194,9 +255,9 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   }
 
   String _episodeLabel() {
-    if (widget.episode != null) {
-      final s = widget.season != null ? 'S${widget.season} ' : '';
-      return '${widget.title}  •  ${s}E${widget.episode}';
+    if (_episode != null) {
+      final s = _season != null ? 'S$_season ' : '';
+      return '${widget.title}  •  $s' 'E$_episode';
     }
     return widget.title;
   }

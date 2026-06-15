@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -13,12 +14,35 @@ class GoogleSignInService {
     scopes: const ['email', 'profile'],
   );
 
-  /// Returns the ID token, or null if the user cancelled.
+  /// Returns the ID token, or null if the user cancelled. Throws a friendly
+  /// message for the common misconfiguration cases (so the sheet shows
+  /// something actionable instead of a raw PlatformException).
   static Future<String?> getIdToken() async {
-    final account = await _google.signIn();
-    if (account == null) return null;
-    final auth = await account.authentication;
-    return auth.idToken;
+    try {
+      final account = await _google.signIn();
+      if (account == null) return null; // user cancelled
+      final auth = await account.authentication;
+      final token = auth.idToken;
+      if (token == null || token.isEmpty) {
+        throw const _AuthError(
+            'Google sign-in returned no token. The Google Cloud OAuth client '
+            'is misconfigured for this app (check the web client ID used as '
+            'serverClientId).');
+      }
+      return token;
+    } on PlatformException catch (e) {
+      final detail = '${e.code} ${e.message ?? ''}';
+      if (detail.contains('10') || e.code == 'sign_in_failed') {
+        throw const _AuthError(
+            'Google sign-in is not configured for this build (DEVELOPER_ERROR '
+            '10). The signing key’s SHA-1 must be registered in the Google '
+            'Cloud OAuth client for package com.aniverse.mobile.');
+      }
+      if (e.code == 'network_error') {
+        throw const _AuthError('Network error during Google sign-in.');
+      }
+      throw _AuthError('Google sign-in failed: ${e.message ?? e.code}');
+    }
   }
 
   static Future<void> signOut() async {
@@ -26,6 +50,14 @@ class GoogleSignInService {
       await _google.signOut();
     } catch (_) {/* ignore */}
   }
+}
+
+/// A user-facing auth error whose [toString] is the message shown in the UI.
+class _AuthError implements Exception {
+  final String message;
+  const _AuthError(this.message);
+  @override
+  String toString() => message;
 }
 
 class AuthState {

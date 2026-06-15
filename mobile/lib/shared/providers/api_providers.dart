@@ -61,6 +61,17 @@ final mediaDetailsProvider =
   return ref.read(apiClientProvider).getDetails(type, id);
 });
 
+/// Episodes for one season, keyed by "id:season" (id may carry a tmdb_/mal_
+/// prefix — it's stripped before hitting `/tv/:id/season/:n`).
+final seasonEpisodesProvider =
+    FutureProvider.family<List<Episode>, String>((ref, key) {
+  final i = key.lastIndexOf(':');
+  final rawId =
+      key.substring(0, i).replaceFirst('tmdb_', '').replaceFirst('mal_', '');
+  final season = int.tryParse(key.substring(i + 1)) ?? 1;
+  return ref.read(apiClientProvider).getSeasonEpisodes(rawId, season);
+});
+
 // ─── Search ───────────────────────────────────────────────
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
