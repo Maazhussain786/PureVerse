@@ -31,7 +31,8 @@ android {
 
     defaultConfig {
         applicationId = "com.aniverse.mobile"
-        minSdk = flutter.minSdkVersion
+        // flutter_webrtc (Watch Party voice) requires minSdk 23.
+        minSdk = maxOf(flutter.minSdkVersion, 23)
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName

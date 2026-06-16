@@ -162,6 +162,29 @@ class ApiClient {
       _post('/user/searches', {'q': q});
   Future<void> clearRecentSearches() => _delete('/user/searches');
 
+  // ─── Watch party (REST; live state flows over Socket.IO) ─
+  /// Public room browser (GET /party/rooms). Returns raw summaries; the party
+  /// layer maps them to PublicRoom so core stays decoupled from feature models.
+  Future<List<Map<String, dynamic>>> listPartyRooms() async {
+    final data = await _get('/party/rooms');
+    if (data is! List) return const [];
+    return data.whereType<Map<String, dynamic>>().toList();
+  }
+
+  /// Meta for the join gate (GET /party/rooms/:code), or null if it's gone.
+  Future<Map<String, dynamic>?> getPartyRoomMeta(String code) async {
+    try {
+      final data = await _get('/party/rooms/$code');
+      return data is Map<String, dynamic> ? data : null;
+    } on ApiException {
+      return null;
+    }
+  }
+
+  /// Notify another PureVerse user with a room invite (POST /party/invite).
+  Future<void> invitePartyUser(String to, String roomCode) =>
+      _post('/party/invite', {'to': to, 'roomCode': roomCode});
+
   // ─── Internals ──────────────────────────────────────────
   Future<List<MediaItem>> _list(String path,
       {Map<String, dynamic>? query}) async {

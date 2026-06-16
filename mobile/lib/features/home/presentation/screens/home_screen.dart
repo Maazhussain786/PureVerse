@@ -8,6 +8,7 @@ import '../../../../shared/providers/api_providers.dart';
 import '../../../../shared/widgets/media_rail.dart';
 import '../../../../shared/widgets/continue_watching_rail.dart';
 import '../../../details/presentation/screens/details_screen.dart';
+import '../../../party/presentation/screens/party_lobby_screen.dart';
 import '../../../shell/main_shell.dart';
 import '../../../user/user_state.dart';
 
@@ -46,6 +47,14 @@ class HomeScreen extends ConsumerWidget {
               elevation: 0,
               title: _BrandTitle(),
               actions: [
+                IconButton(
+                  tooltip: 'Watch Party',
+                  icon: const Icon(Icons.groups_2_rounded,
+                      color: AppColors.teal),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PartyLobbyScreen()),
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.search_rounded,
                       color: AppColors.textSecondary),

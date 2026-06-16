@@ -11,6 +11,8 @@ import '../../../auth/auth_controller.dart';
 import '../../../auth/sign_in_sheet.dart';
 import '../../../user/user_state.dart';
 import '../../../player/presentation/screens/catalog_player_screen.dart';
+import '../../../party/data/party_models.dart';
+import '../../../party/presentation/widgets/create_party_sheet.dart';
 
 /// Records a history entry and opens the native player. Shared by the
 /// "Watch Now" button and the per-episode tiles.
@@ -53,6 +55,17 @@ class DetailsScreen extends ConsumerWidget {
           {int? season, int? episode, String? episodeTitle}) =>
       playMedia(context, ref, d,
           season: season, episode: episode, episodeTitle: episodeTitle);
+
+  /// A watch-party seed for this title — series/anime start at S1E1, anime subbed.
+  PartyMedia _partySeed(MediaDetails d) => PartyMedia(
+        type: d.type,
+        id: d.id,
+        title: d.title,
+        posterUrl: d.posterUrl.isEmpty ? null : d.posterUrl,
+        season: d.type == 'movie' ? null : 1,
+        episode: d.type == 'movie' ? null : 1,
+        category: d.type == 'anime' ? 'sub' : null,
+      );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -163,6 +176,17 @@ class DetailsScreen extends ConsumerWidget {
                 label: const Text('Watch Now'),
               ),
             ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => CreatePartySheet.show(context, _partySeed(d)),
+              icon: const Icon(Icons.groups_2_rounded, color: AppColors.teal),
+              label: const Text('Watch Party', style: TextStyle(color: AppColors.teal)),
+              style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.teal)),
+            ),
+          ),
           if (d.synopsis.isNotEmpty) ...[
             const SizedBox(height: 20),
             const Text('Overview',
