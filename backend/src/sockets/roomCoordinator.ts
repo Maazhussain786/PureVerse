@@ -2,14 +2,20 @@ import { Server, Socket } from 'socket.io';
 import {
   PartyRoom,
   addChatMessage,
+  anyoneStalled,
+  bufferingStatus,
   createRoom,
   currentPosition,
   deleteRoom,
+  everyoneReady,
   getRoom,
   hashPassword,
   memberBanKey,
+  newMember,
   serializeRoom,
   sweepEmptyRooms,
+  voiceMemberCount,
+  VOICE_CAP,
 } from '../services/partyService';
 import { resolveUserFromToken } from '../middleware/auth';
 
@@ -20,14 +26,23 @@ import { resolveUserFromToken } from '../middleware/auth';
 //   party:leave
 //   party:chat     {text}
 //   party:playback {action: 'play'|'pause'|'seek'|'resync', positionSec?}
-//   party:media    {season?, episode?, sourceIdx?}            (host only)
-//   party:settings {name?, isPublic?, allowGuestControl?, password?|null}  (host only)
+//   party:media    {season?, episode?, sourceIdx?, category?}  (host only)
+//   party:settings {name?, isPublic?, allowGuestControl?, autoWait?, password?|null} (host only)
 //   party:mod      {action: 'mute'|'unmute'|'kick'|'timeout', targetSocketId, durationSec?} (host only)
 //   party:position {positionSec}                               (host heartbeat)
+//   party:voice    {inVoice?, micOn?, deafened?}               → ack({success, cap?})
+//   party:rtc-signal {to, data}                                (WebRTC mesh relay)
+//   party:buffering  {buffering, positionSec}                  (per-member sync report)
 //
 // Server → clients:
 //   party:state (full snapshot) · party:members · party:chat · party:playback
 //   party:media · party:settings · party:kicked · party:closed
+//   party:voice-state · party:rtc-signal · party:hold · party:resume
+//   party:buffering-status
+//
+// Voice transport: WebRTC mesh. Each voice member peers with every other voice
+// member; the server only relays opaque SDP/ICE via party:rtc-signal. Glare rule
+// (clients): the peer with the lexicographically smaller socketId is the offerer.
 
 interface SocketCtx {
   roomCode?: string;
@@ -48,6 +63,7 @@ function sanitizeProfile(profile: any, token?: string) {
 
 function sanitizeMedia(media: any) {
   if (!media || typeof media.id !== 'string' || typeof media.type !== 'string') return null;
+  const category = media.category === 'sub' || media.category === 'dub' ? media.category : undefined;
   return {
     type: media.type.slice(0, 10),
     id: media.id.slice(0, 40),
@@ -57,6 +73,7 @@ function sanitizeMedia(media: any) {
     season: media.season != null ? Number(media.season) : undefined,
     episode: media.episode != null ? Number(media.episode) : undefined,
     sourceIdx: Number(media.sourceIdx) || 0,
+    category,
   };
 }
 
@@ -72,9 +89,67 @@ export default function setupSockets(io: Server) {
     io.to(room.code).emit('party:members', serializeRoom(room).members);
   };
 
+  const broadcastVoiceState = (room: PartyRoom) => {
+    io.to(room.code).emit(
+      'party:voice-state',
+      Array.from(room.members.values()).map((m) => ({
+        socketId: m.socketId,
+        inVoice: m.inVoice,
+        micOn: m.micOn,
+        deafened: m.deafened,
+      }))
+    );
+  };
+
   const systemMessage = (room: PartyRoom, text: string) => {
     const msg = addChatMessage(room, { kind: 'system', authorName: 'PureVerse', text });
     io.to(room.code).emit('party:chat', msg);
+  };
+
+  // ─── Buffer-aware auto-wait coordinator ───────────────────
+  // Called whenever a member's buffering / position changes. Pauses the whole
+  // party while anyone is stalled (when autoWait is on) and auto-resumes once
+  // everyone has caught up. When autoWait is off it only reports who's behind.
+  const reconcileHold = (room: PartyRoom, blamedName?: string) => {
+    if (!room.autoWait) {
+      io.to(room.code).emit('party:buffering-status', {
+        holding: false,
+        autoWait: false,
+        members: bufferingStatus(room),
+      });
+      return;
+    }
+
+    if (!room.holding) {
+      // Only meaningful to hold while the party intends to be playing.
+      if (room.playback.isPlaying && anyoneStalled(room)) {
+        room.holding = true;
+        // Freeze the virtual clock at the current live position.
+        room.playback = {
+          isPlaying: false,
+          positionSec: currentPosition(room),
+          updatedAt: Date.now(),
+        };
+        io.to(room.code).emit('party:hold', {
+          byName: blamedName,
+          positionSec: room.playback.positionSec,
+        });
+      }
+    } else if (everyoneReady(room)) {
+      room.holding = false;
+      room.playback = {
+        isPlaying: true,
+        positionSec: room.playback.positionSec,
+        updatedAt: Date.now(),
+      };
+      io.to(room.code).emit('party:resume', { positionSec: room.playback.positionSec });
+    }
+
+    io.to(room.code).emit('party:buffering-status', {
+      holding: room.holding,
+      autoWait: true,
+      members: bufferingStatus(room),
+    });
   };
 
   io.on('connection', (socket: Socket) => {
@@ -118,7 +193,10 @@ export default function setupSockets(io: Server) {
         systemMessage(room, `${member.name} left the party`);
       }
       broadcastMembers(room);
+      broadcastVoiceState(room);
       io.to(room.code).emit('party:settings', { hostSocketId: room.hostSocketId, allowGuestControl: room.allowGuestControl, isPublic: room.isPublic, name: room.name });
+      // The departing member may have been the one we were waiting for.
+      reconcileHold(room);
     };
 
     // ─── Create ───────────────────────────────────────────
@@ -136,6 +214,7 @@ export default function setupSockets(io: Server) {
           password: typeof payload?.password === 'string' && payload.password ? payload.password.slice(0, 60) : undefined,
           isPublic: !!payload?.isPublic,
           allowGuestControl: !!payload?.allowGuestControl,
+          autoWait: payload?.autoWait !== false, // default on
           media,
           host: { socketId: socket.id, ...profile },
         });
@@ -182,15 +261,16 @@ export default function setupSockets(io: Server) {
         leaveRoom(true);
         room.emptySince = null;
         const isFirst = room.members.size === 0;
-        room.members.set(socket.id, {
-          socketId: socket.id,
-          userId: profile.userId,
-          name: profile.name,
-          avatar: profile.avatar,
-          isHost: isFirst, // joining an empty (grace-period) room makes you host
-          joinedAt: Date.now(),
-          mutedUntil: 0,
-        });
+        room.members.set(
+          socket.id,
+          newMember({
+            socketId: socket.id,
+            userId: profile.userId,
+            name: profile.name,
+            avatar: profile.avatar,
+            isHost: isFirst, // joining an empty (grace-period) room makes you host
+          })
+        );
         if (isFirst) room.hostSocketId = socket.id;
 
         const c = ctx();
@@ -261,6 +341,10 @@ export default function setupSockets(io: Server) {
       const action = payload?.action;
       const now = Date.now();
 
+      // An explicit transport action (incl. the host's "Skip wait") overrides an
+      // in-progress auto-wait hold.
+      room.holding = false;
+
       if (action === 'play') {
         room.playback = { isPlaying: true, positionSec: currentPosition(room), updatedAt: now };
       } else if (action === 'pause') {
@@ -284,10 +368,12 @@ export default function setupSockets(io: Server) {
       });
     });
 
-    // Host heartbeat with real player position (when the embed reports it)
+    // Host heartbeat with real player position (when the embed reports it).
+    // Ignored while holding so a stray heartbeat can't unfreeze the clock the
+    // auto-wait coordinator pinned at the hold point.
     socket.on('party:position', (payload: any) => {
       const room = currentRoom();
-      if (!room || !isHost(room)) return;
+      if (!room || !isHost(room) || room.holding) return;
       const pos = Number(payload?.positionSec);
       if (!isFinite(pos) || pos < 0) return;
       room.playback.positionSec = pos;
@@ -314,9 +400,20 @@ export default function setupSockets(io: Server) {
         room.media.sourceIdx = Math.max(0, Number(payload.sourceIdx));
         changed = true;
       }
+      if (payload?.category === 'sub' || payload?.category === 'dub') {
+        room.media.category = payload.category;
+        changed = true;
+      }
       if (!changed) return;
 
       room.playback = { isPlaying: false, positionSec: 0, updatedAt: Date.now() };
+      // Fresh source → clear stale buffering/hold so it doesn't re-trigger a wait.
+      room.holding = false;
+      for (const m of room.members.values()) {
+        m.buffering = false;
+        m.reportedPos = 0;
+        m.posAt = 0;
+      }
       io.to(room.code).emit('party:media', { media: room.media, byName: member?.name });
       if (payload?.episode != null) {
         systemMessage(
@@ -346,6 +443,21 @@ export default function setupSockets(io: Server) {
             : 'Host restricted playback controls to host only'
         );
       }
+      if (payload?.autoWait != null) {
+        room.autoWait = !!payload.autoWait;
+        systemMessage(
+          room,
+          room.autoWait
+            ? 'Host enabled auto-wait — the party pauses for anyone who buffers'
+            : 'Host disabled auto-wait'
+        );
+        // If turning autoWait off while held, release the party.
+        if (!room.autoWait && room.holding) {
+          room.holding = false;
+          room.playback = { isPlaying: true, positionSec: currentPosition(room), updatedAt: Date.now() };
+          io.to(room.code).emit('party:resume', { positionSec: room.playback.positionSec });
+        }
+      }
       if (payload?.password !== undefined) {
         room.passwordHash =
           typeof payload.password === 'string' && payload.password
@@ -357,6 +469,7 @@ export default function setupSockets(io: Server) {
         name: room.name,
         isPublic: room.isPublic,
         allowGuestControl: room.allowGuestControl,
+        autoWait: room.autoWait,
         hasPassword: !!room.passwordHash,
         hostSocketId: room.hostSocketId,
       });
@@ -392,6 +505,57 @@ export default function setupSockets(io: Server) {
         return;
       }
       broadcastMembers(room);
+    });
+
+    // ─── Voice presence (mic / deafen / join-leave channel) ──
+    socket.on('party:voice', (payload: any, ack?: (res: any) => void) => {
+      const room = currentRoom();
+      if (!room) return;
+      const member = room.members.get(socket.id);
+      if (!member) return;
+
+      // Joining the voice mesh is capped — beyond VOICE_CAP, refuse.
+      if (payload?.inVoice === true && !member.inVoice && voiceMemberCount(room) >= VOICE_CAP) {
+        ack?.({ success: false, message: `Voice is full (${VOICE_CAP} max)` });
+        return;
+      }
+
+      if (payload?.inVoice != null) {
+        member.inVoice = !!payload.inVoice;
+        if (!member.inVoice) {
+          member.micOn = false;
+          member.deafened = false;
+        }
+      }
+      if (payload?.micOn != null) member.micOn = member.inVoice && !!payload.micOn;
+      if (payload?.deafened != null) member.deafened = member.inVoice && !!payload.deafened;
+
+      ack?.({ success: true });
+      broadcastVoiceState(room);
+    });
+
+    // ─── WebRTC mesh signaling relay (opaque SDP / ICE) ──────
+    socket.on('party:rtc-signal', (payload: any) => {
+      const room = currentRoom();
+      if (!room) return;
+      const to = payload?.to;
+      if (typeof to !== 'string' || !room.members.has(to)) return; // same-room only
+      io.to(to).emit('party:rtc-signal', { from: socket.id, data: payload?.data });
+    });
+
+    // ─── Per-member buffering / position report ──────────────
+    socket.on('party:buffering', (payload: any) => {
+      const room = currentRoom();
+      if (!room) return;
+      const member = room.members.get(socket.id);
+      if (!member) return;
+      const pos = Number(payload?.positionSec);
+      member.buffering = !!payload?.buffering;
+      if (isFinite(pos) && pos >= 0) {
+        member.reportedPos = pos;
+        member.posAt = Date.now();
+      }
+      reconcileHold(room, member.buffering ? member.name : undefined);
     });
 
     // ─── Full-state sync request ──────────────────────────

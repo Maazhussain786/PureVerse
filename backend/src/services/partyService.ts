@@ -13,6 +13,14 @@ export interface PartyMember {
   isHost: boolean;
   joinedAt: number;
   mutedUntil: number; // 0 = not muted; Infinity-ish for permanent
+  // ── Voice (WebRTC mesh) ──
+  inVoice: boolean; // joined the voice channel (peer of the mesh)
+  micOn: boolean; // publishing audio (false = muted but still in voice)
+  deafened: boolean; // not listening to anyone (purely a client-side hint)
+  // ── Playback sync / buffering ──
+  buffering: boolean; // player is stalled / re-buffering
+  reportedPos: number; // last player position this member reported
+  posAt: number; // Date.now() of the last position report
 }
 
 export interface PartyChatMessage {
@@ -35,6 +43,7 @@ export interface PartyMedia {
   season?: number;
   episode?: number;
   sourceIdx: number;
+  category?: 'sub' | 'dub'; // anime audio variant — keep everyone on the same track
 }
 
 export interface PartyPlayback {
@@ -57,6 +66,8 @@ export interface PartyRoom {
   chat: PartyChatMessage[];
   bannedKeys: Set<string>; // userId or lowercase name of kicked users
   emptySince: number | null;
+  autoWait: boolean; // auto-pause the party while a member buffers / lags (host toggle)
+  holding: boolean; // transient: party is currently held waiting for stragglers
 }
 
 const rooms = new Map<string, PartyRoom>();
@@ -84,8 +95,9 @@ export function createRoom(opts: {
   password?: string;
   isPublic: boolean;
   allowGuestControl: boolean;
+  autoWait?: boolean;
   media: PartyMedia;
-  host: Omit<PartyMember, 'isHost' | 'joinedAt' | 'mutedUntil'>;
+  host: { socketId: string; userId?: string; name: string; avatar: string };
 }): PartyRoom {
   const room: PartyRoom = {
     code: generateCode(),
@@ -101,15 +113,38 @@ export function createRoom(opts: {
     chat: [],
     bannedKeys: new Set(),
     emptySince: null,
+    autoWait: opts.autoWait !== false, // default on
+    holding: false,
   };
-  room.members.set(opts.host.socketId, {
-    ...opts.host,
-    isHost: true,
-    joinedAt: Date.now(),
-    mutedUntil: 0,
-  });
+  room.members.set(opts.host.socketId, newMember({ ...opts.host, isHost: true }));
   rooms.set(room.code, room);
   return room;
+}
+
+/// Build a member with all voice/buffer defaults zeroed. Used by create + join
+/// so the shape stays in one place.
+export function newMember(opts: {
+  socketId: string;
+  userId?: string;
+  name: string;
+  avatar: string;
+  isHost: boolean;
+}): PartyMember {
+  return {
+    socketId: opts.socketId,
+    userId: opts.userId,
+    name: opts.name,
+    avatar: opts.avatar,
+    isHost: opts.isHost,
+    joinedAt: Date.now(),
+    mutedUntil: 0,
+    inVoice: false,
+    micOn: false,
+    deafened: false,
+    buffering: false,
+    reportedPos: 0,
+    posAt: 0,
+  };
 }
 
 export function getRoom(code: string): PartyRoom | undefined {
@@ -154,6 +189,21 @@ export function currentPosition(room: PartyRoom): number {
   return p.positionSec + (Date.now() - p.updatedAt) / 1000;
 }
 
+export function serializeMember(m: PartyMember) {
+  return {
+    socketId: m.socketId,
+    name: m.name,
+    avatar: m.avatar,
+    isHost: m.isHost,
+    joinedAt: m.joinedAt,
+    muted: m.mutedUntil > Date.now(),
+    inVoice: m.inVoice,
+    micOn: m.micOn,
+    deafened: m.deafened,
+    buffering: m.buffering,
+  };
+}
+
 export function serializeRoom(room: PartyRoom) {
   return {
     code: room.code,
@@ -161,6 +211,8 @@ export function serializeRoom(room: PartyRoom) {
     isPublic: room.isPublic,
     hasPassword: !!room.passwordHash,
     allowGuestControl: room.allowGuestControl,
+    autoWait: room.autoWait,
+    holding: room.holding,
     hostSocketId: room.hostSocketId,
     createdAt: room.createdAt,
     media: room.media,
@@ -169,16 +221,59 @@ export function serializeRoom(room: PartyRoom) {
       positionSec: currentPosition(room),
       updatedAt: room.playback.updatedAt,
     },
-    members: Array.from(room.members.values()).map((m) => ({
-      socketId: m.socketId,
-      name: m.name,
-      avatar: m.avatar,
-      isHost: m.isHost,
-      joinedAt: m.joinedAt,
-      muted: m.mutedUntil > Date.now(),
-    })),
+    members: Array.from(room.members.values()).map(serializeMember),
     chat: room.chat.slice(-MAX_CHAT_HISTORY),
   };
+}
+
+// ─── Voice + buffer-aware sync helpers ────────────────────
+export const VOICE_CAP = 10; // max peers in the WebRTC mesh (SFU is the scale path)
+export const LAG_HOLD_SEC = 2.5; // a member this far behind the clock triggers a hold
+export const READY_TOL_SEC = 1.2; // everyone within this of target → safe to resume
+
+export function voiceMemberCount(room: PartyRoom): number {
+  let n = 0;
+  for (const m of room.members.values()) if (m.inVoice) n++;
+  return n;
+}
+
+/// How far behind the live party clock a member is (seconds; <=0 = on/ahead).
+export function secondsBehind(room: PartyRoom, m: PartyMember): number {
+  if (!m.posAt) return 0;
+  // Extrapolate the member's last report to "now" if the party is playing.
+  const elapsed = room.playback.isPlaying ? (Date.now() - m.posAt) / 1000 : 0;
+  const memberNow = m.reportedPos + elapsed;
+  return currentPosition(room) - memberNow;
+}
+
+/// True when at least one member is stalled or lagging past the hold threshold.
+export function anyoneStalled(room: PartyRoom): boolean {
+  for (const m of room.members.values()) {
+    if (m.buffering) return true;
+    if (secondsBehind(room, m) > LAG_HOLD_SEC) return true;
+  }
+  return false;
+}
+
+/// True only when every member is unbuffered and within READY_TOL of the clock.
+export function everyoneReady(room: PartyRoom): boolean {
+  for (const m of room.members.values()) {
+    if (m.buffering) return false;
+    if (Math.abs(secondsBehind(room, m)) > READY_TOL_SEC) return false;
+  }
+  return true;
+}
+
+/// Per-member buffering summary for the host UI (used when autoWait is off).
+export function bufferingStatus(room: PartyRoom) {
+  return Array.from(room.members.values())
+    .map((m) => ({
+      socketId: m.socketId,
+      name: m.name,
+      buffering: m.buffering,
+      secondsBehind: Math.max(0, Math.round(secondsBehind(room, m) * 10) / 10),
+    }))
+    .filter((s) => s.buffering || s.secondsBehind > LAG_HOLD_SEC);
 }
 
 export function addChatMessage(
