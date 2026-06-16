@@ -428,8 +428,9 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
     if (!mounted) return;
 
     if (result == null) {
-      // Try the next server, or give up to the iframe player.
-      if (index + 1 < _servers.length) {
+      // After a couple of quick attempts, drop to the reliable web player
+      // instead of grinding through every server — keeps start-up snappy.
+      if (index + 1 < _servers.length && index + 1 < 2) {
         _extractServer(index + 1);
       } else {
         _fallback();

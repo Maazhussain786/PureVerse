@@ -38,7 +38,7 @@ class StreamExtractor {
 
   static Future<ExtractedStream?> extract(
     String embedUrl, {
-    Duration timeout = const Duration(seconds: 25),
+    Duration timeout = const Duration(seconds: 10),
   }) async {
     final completer = Completer<ExtractedStream?>();
     final subtitles = <ExtractedSubtitle>[];

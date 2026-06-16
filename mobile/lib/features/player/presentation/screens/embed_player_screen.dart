@@ -49,6 +49,7 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   Object? _error;
   int _selected = 0;
   InAppWebViewController? _webController;
+  final Set<int> _failed = {}; // server indices that errored — skip on auto-failover
 
   late int? _season = widget.season;
   late int? _episode = widget.episode;
@@ -104,6 +105,8 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
       _episode = episode;
       _payload = null; // show the loader while the new source resolves
       _error = null;
+      _selected = 0;
+      _failed.clear();
     });
     ref.read(userStateProvider.notifier).addToHistory(
           WatchHistoryItem.create(
@@ -192,6 +195,14 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
       onWebViewCreated: (c) => _webController = c,
       // Block popups / popunders entirely.
       onCreateWindow: (controller, action) async => false,
+      // A dead/blocked provider fails on the top frame — auto-advance to the
+      // next server so the user isn't left on a blank page.
+      onReceivedError: (controller, request, error) {
+        if (request.isForMainFrame == true && !_failed.contains(_selected)) {
+          _failed.add(_selected);
+          _tryNextServer();
+        }
+      },
       shouldOverrideUrlLoading: (controller, action) async {
         final target = action.request.url;
         // Allow sub-frame (the actual player iframe) loads freely.
@@ -206,6 +217,21 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
         return NavigationActionPolicy.ALLOW;
       },
     );
+  }
+
+  /// Advance to the next embed server (used by auto-failover and the manual
+  /// "Try next server" button). Changing [_selected] swaps the WebView's
+  /// ValueKey, which reloads it with the next provider URL.
+  void _tryNextServer() {
+    final sources = _payload?.sources ?? const <StreamSource>[];
+    if (_selected + 1 < sources.length) {
+      setState(() => _selected += 1);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(
+            content: Text('That was the last server — try again later')));
+    }
   }
 
   Widget _topBar() {
@@ -240,6 +266,13 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (sources.length > 1)
+              IconButton(
+                icon: const Icon(Icons.published_with_changes_rounded,
+                    color: Colors.white),
+                tooltip: 'Not loading? Try next server',
+                onPressed: _tryNextServer,
+              ),
             if (_isSeries)
               IconButton(
                 icon: const Icon(Icons.video_library_rounded,

@@ -6,7 +6,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/models/watch_history.dart';
 import '../../../auth/auth_controller.dart';
 import '../../../auth/sign_in_sheet.dart';
-import '../../../player/presentation/screens/catalog_player_screen.dart';
+import '../../../player/presentation/player_route.dart';
 import '../../../user/user_state.dart';
 
 /// Watch history — newest-first list with resume-progress, mirroring the web
@@ -155,18 +155,16 @@ class _HistoryTile extends StatelessWidget {
   const _HistoryTile({required this.item, required this.onRemove});
 
   void _resume(BuildContext context) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => CatalogPlayerScreen(
-        mediaType: item.type,
-        mediaId: item.id,
-        title: item.title,
-        posterUrl: item.posterUrl,
-        rating: item.rating,
-        releaseYear: item.releaseYear,
-        season: item.season,
-        episode: item.episode,
-        episodeTitle: item.episodeTitle,
-      ),
+    Navigator.of(context).push(playerRoute(
+      mediaType: item.type,
+      mediaId: item.id,
+      title: item.title,
+      posterUrl: item.posterUrl,
+      rating: item.rating,
+      releaseYear: item.releaseYear,
+      season: item.season,
+      episode: item.episode,
+      episodeTitle: item.episodeTitle,
     ));
   }
 

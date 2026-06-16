@@ -3,7 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/models/watch_history.dart';
-import '../../features/player/presentation/screens/catalog_player_screen.dart';
+import '../../features/player/presentation/player_route.dart';
 import 'section_header.dart';
 
 /// Horizontal "Continue Watching" rail — poster cards with a resume-progress
@@ -55,18 +55,16 @@ class _ContinueCard extends StatelessWidget {
   const _ContinueCard({required this.item, required this.onRemove});
 
   void _resume(BuildContext context) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => CatalogPlayerScreen(
-        mediaType: item.type,
-        mediaId: item.id,
-        title: item.title,
-        posterUrl: item.posterUrl,
-        rating: item.rating,
-        releaseYear: item.releaseYear,
-        season: item.season,
-        episode: item.episode,
-        episodeTitle: item.episodeTitle,
-      ),
+    Navigator.of(context).push(playerRoute(
+      mediaType: item.type,
+      mediaId: item.id,
+      title: item.title,
+      posterUrl: item.posterUrl,
+      rating: item.rating,
+      releaseYear: item.releaseYear,
+      season: item.season,
+      episode: item.episode,
+      episodeTitle: item.episodeTitle,
     ));
   }
 

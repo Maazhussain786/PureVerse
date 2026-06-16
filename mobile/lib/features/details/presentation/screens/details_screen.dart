@@ -10,7 +10,7 @@ import '../../../../shared/providers/api_providers.dart';
 import '../../../auth/auth_controller.dart';
 import '../../../auth/sign_in_sheet.dart';
 import '../../../user/user_state.dart';
-import '../../../player/presentation/screens/catalog_player_screen.dart';
+import '../../../player/presentation/player_route.dart';
 import '../../../party/data/party_models.dart';
 import '../../../party/presentation/widgets/create_party_sheet.dart';
 
@@ -31,19 +31,17 @@ void playMedia(BuildContext context, WidgetRef ref, MediaDetails d,
           episodeTitle: episodeTitle,
         ),
       );
-  Navigator.of(context).push(MaterialPageRoute(
-    builder: (_) => CatalogPlayerScreen(
-      mediaType: d.type,
-      mediaId: d.id,
-      title: d.title,
-      posterUrl: d.posterUrl,
-      rating: d.rating,
-      releaseYear: d.releaseYear,
-      totalSeasons: d.totalSeasons,
-      season: season,
-      episode: episode,
-      episodeTitle: episodeTitle,
-    ),
+  Navigator.of(context).push(playerRoute(
+    mediaType: d.type,
+    mediaId: d.id,
+    title: d.title,
+    posterUrl: d.posterUrl,
+    rating: d.rating,
+    releaseYear: d.releaseYear,
+    totalSeasons: d.totalSeasons,
+    season: season,
+    episode: episode,
+    episodeTitle: episodeTitle,
   ));
 }
 
