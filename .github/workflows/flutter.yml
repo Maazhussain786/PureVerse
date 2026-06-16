@@ -64,11 +64,14 @@ jobs:
             flutter build apk --debug
           fi
 
+      - name: Name the APK "PureVerse.apk"
+        run: cp mobile/build/app/outputs/flutter-apk/app-debug.apk PureVerse.apk
+
       - name: Upload APK (Actions artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: PureVerse-app-debug-apk
-          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          name: PureVerse
+          path: PureVerse.apk
           if-no-files-found: error
 
       # Publish the raw .apk to a Release for a direct, login-free phone download.
@@ -78,6 +81,6 @@ jobs:
         run: |
           gh release delete flutter-latest --yes --cleanup-tag || true
           gh release create flutter-latest \
-            mobile/build/app/outputs/flutter-apk/app-debug.apk \
-            --title "PureVerse App (latest build)" \
-            --notes "Tap **app-debug.apk** below to install on Android. Enable 'Install unknown apps' when prompted."
+            PureVerse.apk \
+            --title "PureVerse (latest build)" \
+            --notes "Tap **PureVerse.apk** below to install on Android. Enable 'Install unknown apps' when prompted."
