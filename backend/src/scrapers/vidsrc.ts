@@ -28,19 +28,19 @@ export async function resolveVidSrcStream(
 
   if (type === 'movie') {
     // ── MOVIE servers (film/TV catalogue providers — kept separate from anime) ──
-    // VidLink FIRST: ad-clean provider kept as the default. Each entry is a
-    // Switch-Server fallback if one is blocked or has no source.
+    // Ordered most-reliable-first (VidFast). Each entry is a Switch-Server
+    // fallback the client auto-advances to if one is blocked or has no source.
     sources.push(
-      {
-        server: 'VidLink',
-        quality: 'Auto',
-        url: `https://vidlink.pro/movie/${rawId}`,
-        type: 'embed',
-      },
       {
         server: 'VidFast',
         quality: 'Auto',
         url: `https://vidfast.pro/movie/${rawId}?autoPlay=true`,
+        type: 'embed',
+      },
+      {
+        server: 'VidLink',
+        quality: 'Auto',
+        url: `https://vidlink.pro/movie/${rawId}`,
         type: 'embed',
       },
       {
@@ -64,20 +64,20 @@ export async function resolveVidSrcStream(
     );
   } else if (type === 'tv') {
     // ── TV servers (film/TV catalogue providers — kept separate from anime) ──
-    // VidLink first; the rest are Switch-Server fallbacks.
+    // VidFast first (most reliable for TV); the rest are Switch-Server fallbacks.
     const s = season || '1';
     const e = episode || '1';
     sources.push(
       {
-        server: 'VidLink',
-        quality: 'Auto',
-        url: `https://vidlink.pro/tv/${rawId}/${s}/${e}`,
-        type: 'embed',
-      },
-      {
         server: 'VidFast',
         quality: 'Auto',
         url: `https://vidfast.pro/tv/${rawId}/${s}/${e}?autoPlay=true`,
+        type: 'embed',
+      },
+      {
+        server: 'VidLink',
+        quality: 'Auto',
+        url: `https://vidlink.pro/tv/${rawId}/${s}/${e}`,
         type: 'embed',
       },
       {
