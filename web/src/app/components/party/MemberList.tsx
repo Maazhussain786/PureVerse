@@ -9,6 +9,40 @@ export interface PartyMember {
   isHost: boolean;
   joinedAt: number;
   muted: boolean;
+  inVoice?: boolean;
+  micOn?: boolean;
+  deafened?: boolean;
+}
+
+// Live voice indicator (mic on / mic muted / deafened) shown for members who
+// have joined the voice channel.
+function VoiceBadge({ member }: { member: PartyMember }) {
+  if (!member.inVoice) return null;
+  if (member.deafened) {
+    return (
+      <span title="Deafened" className="text-red-400">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 14v-2a9 9 0 0 1 18 0v2" /><path d="M21 14v3a2 2 0 0 1-2 2h-1v-5z" /><path d="M3 14v3a2 2 0 0 0 2 2h1v-5z" /><line x1="2" y1="2" x2="22" y2="22" />
+        </svg>
+      </span>
+    );
+  }
+  if (!member.micOn) {
+    return (
+      <span title="Mic muted" className="text-[var(--text-muted)]">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <line x1="2" y1="2" x2="22" y2="22" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" /><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
+        </svg>
+      </span>
+    );
+  }
+  return (
+    <span title="Talking" className="text-[var(--accent-teal)]">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10v2a7 7 0 0 0 14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
+      </svg>
+    </span>
+  );
 }
 
 interface MemberListProps {
@@ -73,6 +107,9 @@ export default function MemberList({ members, selfId, selfIsHost, onMod }: Membe
                 {member.muted && <span className="text-red-400 font-semibold">· Muted</span>}
               </p>
             </div>
+
+            {/* Voice indicator */}
+            <VoiceBadge member={member} />
 
             {/* Moderation menu (host only, not on self) */}
             {selfIsHost && !isSelf && (

@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "../../components/AuthContext";
 import ChatPanel, { ChatMessage } from "../../components/party/ChatPanel";
 import MemberList, { PartyMember } from "../../components/party/MemberList";
+import { useVoiceChat } from "../../components/party/useVoiceChat";
 import ServerSelector, { StreamSource } from "../../components/watch/ServerSelector";
 import EpisodePanel, { EpisodeInfo } from "../../components/watch/EpisodePanel";
 import { getSocket } from "../../lib/socket";
@@ -103,6 +104,9 @@ export default function PartyRoomPage() {
   const isHost = room?.hostSocketId === selfId;
   const canControl = isHost || !!room?.allowGuestControl;
 
+  // Self-hosted WebRTC mesh voice (mic + self-deafen).
+  const voice = useVoiceChat();
+
   const showCue = useCallback((text: string, icon: "play" | "pause" | "sync") => {
     setCue({ text, icon });
     if (cueTimer.current) clearTimeout(cueTimer.current);
@@ -155,6 +159,25 @@ export default function PartyRoomPage() {
     const onSettings = (payload: any) => {
       setRoom((prev) => (prev ? { ...prev, ...payload } : prev));
     };
+    // Merge live voice flags (mic / deafen) into the member list for the badges.
+    const onVoiceState = (list: { socketId: string; inVoice: boolean; micOn: boolean; deafened: boolean }[]) => {
+      setRoom((prev) => {
+        if (!prev) return prev;
+        const byId = new Map(list.map((v) => [v.socketId, v]));
+        return {
+          ...prev,
+          members: prev.members.map((m) => {
+            const v = byId.get(m.socketId);
+            return v ? { ...m, inVoice: v.inVoice, micOn: v.micOn, deafened: v.deafened } : m;
+          }),
+        };
+      });
+    };
+    // Advisory only on web — the iframe can't be force-paused, so we just cue.
+    const onHold = (p: { byName?: string }) =>
+      showCue(`${p?.byName || "Someone"} is buffering — give them a sec`, "sync");
+    const onResume = (p: { positionSec?: number }) =>
+      showCue(`Everyone caught up — resync to ${formatClock(p?.positionSec || 0)}`, "play");
     const onKicked = (payload: any) => {
       if (payload?.roomCode === code) setPhase("kicked");
     };
@@ -190,6 +213,9 @@ export default function PartyRoomPage() {
     socket.on("party:playback", onPlayback);
     socket.on("party:media", onMedia);
     socket.on("party:settings", onSettings);
+    socket.on("party:voice-state", onVoiceState);
+    socket.on("party:hold", onHold);
+    socket.on("party:resume", onResume);
     socket.on("party:kicked", onKicked);
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
@@ -223,6 +249,9 @@ export default function PartyRoomPage() {
       socket.off("party:playback", onPlayback);
       socket.off("party:media", onMedia);
       socket.off("party:settings", onSettings);
+      socket.off("party:voice-state", onVoiceState);
+      socket.off("party:hold", onHold);
+      socket.off("party:resume", onResume);
       socket.off("party:kicked", onKicked);
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
@@ -322,6 +351,11 @@ export default function PartyRoomPage() {
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
   }, [isHost]);
+
+  // Surface voice errors (mic permission / voice full) as a cue.
+  useEffect(() => {
+    if (voice.error) showCue(voice.error, "pause");
+  }, [voice.error, showCue]);
 
   // ─── Emitters ──────────────────────────────────────────
   const sendChat = useCallback((text: string) => {
@@ -606,6 +640,53 @@ export default function PartyRoomPage() {
                   </svg>
                   Live Sync
                 </button>
+              </div>
+
+              {/* Voice chat (WebRTC mesh) */}
+              <div className="flex items-center gap-2">
+                {!voice.inVoice ? (
+                  <button
+                    onClick={voice.joinVoice}
+                    disabled={voice.connecting}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--accent-teal-subtle)] border border-[var(--accent-teal)]/30 text-[var(--accent-teal)] hover:border-[var(--accent-teal)]/60 transition-all disabled:opacity-50"
+                    style={{ padding: "10px 16px" }}
+                    title="Talk with the room over your mic"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10v2a7 7 0 0 0 14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" /></svg>
+                    {voice.connecting ? "Joining…" : "Join voice"}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={voice.toggleMic}
+                      title={voice.micOn ? "Mute mic" : "Unmute mic"}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border ${voice.micOn ? "bg-[var(--accent-teal-subtle)] border-[var(--accent-teal)]/40 text-[var(--accent-teal)]" : "bg-white/5 border-white/10 text-[var(--text-muted)]"}`}
+                    >
+                      {voice.micOn ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10v2a7 7 0 0 0 14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" /></svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="2" y1="2" x2="22" y2="22" /><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" /><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" /></svg>
+                      )}
+                    </button>
+                    <button
+                      onClick={voice.toggleDeafen}
+                      title={voice.deafened ? "Undeafen" : "Deafen (mute everyone, keep video)"}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border ${voice.deafened ? "bg-red-500/15 border-red-400/40 text-red-400" : "bg-white/5 border-white/10 text-[var(--text-secondary)]"}`}
+                    >
+                      {voice.deafened ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 14v-2a9 9 0 0 1 18 0v2" /><path d="M21 14v3a2 2 0 0 1-2 2h-1v-5z" /><path d="M3 14v3a2 2 0 0 0 2 2h1v-5z" /><line x1="2" y1="2" x2="22" y2="22" /></svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 14v-2a9 9 0 0 1 18 0v2" /><path d="M21 14v3a2 2 0 0 1-2 2h-1v-5z" /><path d="M3 14v3a2 2 0 0 0 2 2h1v-5z" /></svg>
+                      )}
+                    </button>
+                    <button
+                      onClick={voice.leaveVoice}
+                      className="text-[11px] font-semibold text-red-400 hover:text-red-300 px-2"
+                    >
+                      Leave voice
+                    </button>
+                  </>
+                )}
               </div>
 
               <span className={`text-[11px] font-semibold ${room!.playback.isPlaying ? "text-[var(--accent-primary)]" : "text-[var(--text-muted)]"}`}>
