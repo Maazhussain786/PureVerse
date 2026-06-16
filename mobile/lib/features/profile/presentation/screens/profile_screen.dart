@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../../../core/config/app_config.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/avatars.dart';
 import '../../../../core/models/user_profile.dart';
-import '../../../../core/models/demo_media.dart';
 import '../widgets/avatar_picker_sheet.dart';
 import '../../../auth/auth_controller.dart';
 import '../../../auth/sign_in_sheet.dart';
@@ -14,7 +12,10 @@ import '../../../user/user_state.dart';
 import '../../../../shared/widgets/continue_watching_rail.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 import '../../../history/presentation/screens/history_screen.dart';
-import '../../../player/presentation/screens/native_player_screen.dart';
+import '../../../party/presentation/screens/party_lobby_screen.dart';
+
+const String kSupportEmail = 'pureversesupport@gmail.com';
+const String kAppVersion = '1.2.0';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -45,14 +46,12 @@ class ProfileScreen extends ConsumerWidget {
                   _preferences(ref, auth.user!),
                 ],
                 const SizedBox(height: 20),
-                _playerPreview(context),
-                const SizedBox(height: 24),
-                _infoTile(Icons.cloud_done_rounded, 'Backend',
-                    AppConfig.isProduction ? 'Production' : 'Local dev'),
-                _infoTile(Icons.link_rounded, 'API', AppConfig.apiBaseUrl),
+                _watchPartyCard(context),
+                const SizedBox(height: 12),
+                _supportCard(),
                 const SizedBox(height: 24),
                 const Center(
-                  child: Text('PureVerse • v1.0.0',
+                  child: Text('PureVerse • v$kAppVersion',
                       style:
                           TextStyle(color: AppColors.textMuted, fontSize: 12)),
                 ),
@@ -364,8 +363,8 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  // ─── Custom player preview (sample HLS streams) ───
-  Widget _playerPreview(BuildContext context) {
+  // ─── Watch Party entry ───
+  Widget _watchPartyCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -377,70 +376,71 @@ class ProfileScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: [
-              const Icon(Icons.play_circle_outline_rounded,
-                  color: AppColors.accent, size: 20),
-              const SizedBox(width: 8),
-              const Text('Video Player',
+            children: const [
+              Icon(Icons.groups_2_rounded, color: AppColors.teal, size: 20),
+              SizedBox(width: 8),
+              Text('Watch Party',
                   style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 15,
                       fontWeight: FontWeight.w700)),
-              const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.accentSubtle,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text('BETA',
-                    style: TextStyle(
-                        color: AppColors.accent,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1)),
-              ),
             ],
           ),
           const SizedBox(height: 6),
           const Text(
-            'Preview the custom player — skip controls, scrubbing, and '
-            'dynamic audio/subtitle switching on sample streams.',
+            'Watch in sync with friends — live chat and voice, public or '
+            'private rooms.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 14),
-          ...demoCatalog.map((m) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                          builder: (_) => NativePlayerScreen(media: m)),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(m.title,
-                            style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 2),
-                        Text(m.subtitle,
-                            style: const TextStyle(
-                                color: AppColors.textMuted, fontSize: 11)),
-                      ],
-                    ),
-                  ),
-                ),
-              )),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PartyLobbyScreen()),
+              ),
+              icon: const Icon(Icons.live_tv_rounded, size: 18),
+              label: const Text('Open Watch Party'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Help & support ───
+  Widget _supportCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.glassBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Row(
+            children: [
+              Icon(Icons.mail_outline_rounded,
+                  color: AppColors.accent, size: 20),
+              SizedBox(width: 8),
+              Text('Help & Support',
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
+          SizedBox(height: 6),
+          Text('Questions, bugs or feedback? Reach us at',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          SizedBox(height: 4),
+          SelectableText(kSupportEmail,
+              style: TextStyle(
+                  color: AppColors.accent,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -486,24 +486,4 @@ class ProfileScreen extends ConsumerWidget {
         ),
       );
 
-  Widget _infoTile(IconData icon, String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            Icon(icon, color: AppColors.textSecondary, size: 20),
-            const SizedBox(width: 14),
-            Text(label,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 14)),
-            const Spacer(),
-            Flexible(
-              child: Text(value,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                      color: AppColors.textMuted, fontSize: 12),
-                  overflow: TextOverflow.ellipsis),
-            ),
-          ],
-        ),
-      );
 }
