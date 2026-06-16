@@ -28,15 +28,8 @@ export async function resolveVidSrcStream(
 
   if (type === 'movie') {
     // ── MOVIE servers (film/TV catalogue providers — kept separate from anime) ──
-    // EzVid (ezvidapi) FIRST: a maintained aggregator whose embed handles HLS,
-    // subtitles and multi-provider auto-failover for us. The rest are kept as
-    // Switch-Server fallbacks. Ad-clean providers next; ad-heavy ones lower.
-    sources.push({
-      server: 'EzVid',
-      quality: 'Auto',
-      url: `https://ezvidapi.com/embed/movie/${rawId}`,
-      type: 'embed',
-    });
+    // VidLink FIRST: ad-clean provider kept as the default. Each entry is a
+    // Switch-Server fallback if one is blocked or has no source.
     sources.push(
       {
         server: 'VidLink',
@@ -71,15 +64,9 @@ export async function resolveVidSrcStream(
     );
   } else if (type === 'tv') {
     // ── TV servers (film/TV catalogue providers — kept separate from anime) ──
-    // EzVid (ezvidapi) first (subtitles + auto-failover); rest are fallbacks.
+    // VidLink first; the rest are Switch-Server fallbacks.
     const s = season || '1';
     const e = episode || '1';
-    sources.push({
-      server: 'EzVid',
-      quality: 'Auto',
-      url: `https://ezvidapi.com/embed/tv/${rawId}/${s}/${e}`,
-      type: 'embed',
-    });
     sources.push(
       {
         server: 'VidLink',
@@ -183,16 +170,8 @@ export async function resolveVidSrcStream(
       const e = episode || '1';
 
       // ── ANIME servers (kept SEPARATE from movie/TV) ──
-      // Anime is mapped onto a TMDB TV id. EzVid (ezvidapi) first — its embed
-      // handles HLS + subtitles + sub/dub + auto-failover; the rest are
+      // Anime is mapped onto a TMDB TV id. VidLink first; the rest are
       // Switch-Server fallbacks.
-      sources.push({
-        server: 'EzVid',
-        quality: 'Auto',
-        url: `https://ezvidapi.com/embed/tv/${tmdbId}/${s}/${e}`,
-        type: 'embed',
-        category: 'multi',
-      });
       sources.push(
         {
           server: 'VidLink',
