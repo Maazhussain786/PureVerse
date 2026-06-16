@@ -10,10 +10,16 @@ import { getSocket } from "../../lib/socket";
 // just mutes those (the video keeps playing). Glare rule: the peer with the
 // lexicographically smaller socketId is the offerer.
 
+// STUN + a public TURN relay. TURN is what lets peers connect across
+// carrier/NAT boundaries (pure STUN fails on most mobile networks). Swap these
+// for your own coturn for production scale.
 const RTC_CONFIG: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
+    { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" },
   ],
 };
 

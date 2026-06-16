@@ -75,10 +75,29 @@ class VoiceController extends StateNotifier<VoiceUiState> {
   final Map<String, _Peer> _peers = {};
   List<Map<String, dynamic>> _lastVoiceState = const [];
 
+  // STUN + a public TURN relay. TURN is essential for phones on mobile data /
+  // carrier-grade NAT, where pure peer-to-peer (STUN only) usually fails — that
+  // was why voice didn't connect between devices. For production scale, replace
+  // these with your own coturn (e.g. on the DigitalOcean droplet).
   static const Map<String, dynamic> _rtcConfig = {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
       {'urls': 'stun:stun1.l.google.com:19302'},
+      {
+        'urls': 'turn:openrelay.metered.ca:80',
+        'username': 'openrelayproject',
+        'credential': 'openrelayproject',
+      },
+      {
+        'urls': 'turn:openrelay.metered.ca:443',
+        'username': 'openrelayproject',
+        'credential': 'openrelayproject',
+      },
+      {
+        'urls': 'turn:openrelay.metered.ca:443?transport=tcp',
+        'username': 'openrelayproject',
+        'credential': 'openrelayproject',
+      },
     ],
     'sdpSemantics': 'unified-plan',
   };
@@ -112,6 +131,12 @@ class VoiceController extends StateNotifier<VoiceUiState> {
           connecting: false, error: (res['message'] ?? 'Voice is full').toString());
       return;
     }
+
+    // Route call audio to the loudspeaker so remote voices are actually audible
+    // (WebRTC defaults to the quiet earpiece on Android).
+    try {
+      await Helper.setSpeakerphoneOn(true);
+    } catch (_) {/* not fatal */}
 
     state = state.copyWith(inVoice: true, micOn: true, deafened: false, connecting: false);
     _reconcilePeers(); // connect to everyone already in voice
