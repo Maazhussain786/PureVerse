@@ -103,6 +103,12 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
   bool _controlsVisible = true;
   Timer? _hideTimer;
 
+  // True while we're replacing this screen with the iframe player. During a
+  // pushReplacement this screen's dispose() runs *after* the iframe screen's
+  // initState(), so we must NOT reset the orientation here or we'd clobber the
+  // iframe's landscape lock — it owns the orientation lifecycle from then on.
+  bool _handingOff = false;
+
   @override
   void initState() {
     super.initState();
@@ -164,8 +170,10 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
       s.cancel();
     }
     _player.dispose();
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (!_handingOff) {
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
     super.dispose();
   }
 
@@ -282,14 +290,15 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
     }
   }
 
-  /// No direct stream available. For anime, prefer the iframe player — the
-  /// providers (VidLink) expose sub/dub + subtitle languages in their own UI,
-  /// whereas on-device extraction yields a bare (often Japanese-only, no-subs)
-  /// stream. Movies/TV keep the native extraction path.
+  /// No direct stream available: extract a playable stream from the provider
+  /// embeds on-device and play it in the native player — so anime gets the same
+  /// premium, landscape experience as movies/TV. The extractor harvests the
+  /// provider's subtitle (.vtt) tracks and the HLS audio (sub/dub) tracks, which
+  /// the settings sheet then exposes. If extraction fails on every server we
+  /// drop to the iframe player; its provider sub/dub UI is also reachable any
+  /// time from the in-player Server menu ("Web player").
   void _afterNoDirect() {
     if (_servers.isEmpty) {
-      _fallback();
-    } else if (widget.mediaType == 'anime') {
       _fallback();
     } else {
       _extractServer(0);
@@ -446,6 +455,7 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
   /// Hand off to the iframe player when no direct stream is available.
   void _fallback() {
     if (!mounted) return;
+    _handingOff = true; // keep landscape; the iframe screen owns it now
     Navigator.of(context).pushReplacement(MaterialPageRoute(
       builder: (_) => EmbedPlayerScreen(
         mediaType: widget.mediaType,
@@ -791,7 +801,7 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
                       )),
                 ]),
 
-                if (_servers.length > 1) ...[
+                if (_servers.isNotEmpty) ...[
                   const SizedBox(height: 22),
                   _heading(Icons.dns_rounded, 'Server'),
                   const SizedBox(height: 10),
@@ -804,12 +814,25 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
                           label: _servers[i].server.isEmpty
                               ? 'Server ${i + 1}'
                               : _servers[i].server,
-                          active: i == _serverIndex,
+                          active: _currentCategory == null && i == _serverIndex,
                           onTap: () {
                             Navigator.pop(context);
-                            if (i != _serverIndex) _extractServer(i);
+                            if (_currentCategory != null || i != _serverIndex) {
+                              _extractServer(i);
+                            }
                           },
                         ),
+                      // Always-available fallback: the provider's own page in the
+                      // in-app browser, with its built-in sub / dub + subtitle
+                      // selector. Handy when a direct stream lacks subtitles.
+                      PlayerChip(
+                        label: 'Web player',
+                        active: false,
+                        onTap: () {
+                          Navigator.pop(context);
+                          _fallback();
+                        },
+                      ),
                     ],
                   ),
                 ],
