@@ -87,6 +87,7 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
   String _qualityId = 'auto';
   String _audioId = 'auto';
   String _subKey = 'off'; // off | emb:<id> | ext:<url>
+  double _subOffset = 0.0; // subtitle delay (s): + = later, − = earlier
 
   // Hybrid direct (HiAnime) path: server-scraped sub/dub streams + subtitles.
   List<StreamSource> _directSources = const [];
@@ -539,6 +540,30 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
     _restartHideTimer();
   }
 
+  /// Shift subtitle timing (mpv `sub-delay`, seconds) to line subs up with audio.
+  Future<void> _applySubDelay() async {
+    final p = _player.platform;
+    if (p is NativePlayer) {
+      try {
+        await p.setProperty('sub-delay', _subOffset.toStringAsFixed(2));
+      } catch (_) {/* property unavailable on this build */}
+    }
+  }
+
+  Widget _subStepBtn(IconData icon, VoidCallback onTap) => Material(
+        color: AppColors.glassBackground,
+        shape:
+            const CircleBorder(side: BorderSide(color: AppColors.glassBorder)),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(icon, color: AppColors.textPrimary, size: 22),
+          ),
+        ),
+      );
+
   // ─── Controls visibility ───
   void _togglePlay() {
     _player.playOrPause();
@@ -801,41 +826,85 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
                       )),
                 ]),
 
-                if (_servers.isNotEmpty) ...[
-                  const SizedBox(height: 22),
-                  _heading(Icons.dns_rounded, 'Server'),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      for (int i = 0; i < _servers.length; i++)
-                        PlayerChip(
-                          label: _servers[i].server.isEmpty
-                              ? 'Server ${i + 1}'
-                              : _servers[i].server,
-                          active: _currentCategory == null && i == _serverIndex,
-                          onTap: () {
-                            Navigator.pop(context);
-                            if (_currentCategory != null || i != _serverIndex) {
-                              _extractServer(i);
-                            }
-                          },
+                const SizedBox(height: 22),
+                _heading(Icons.av_timer_rounded, 'Subtitle timing'),
+                const SizedBox(height: 6),
+                const Text('Nudge subtitles to line up with the video.',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                const SizedBox(height: 10),
+                StatefulBuilder(
+                  builder: (ctx, setSheet) {
+                    void bump(double d) {
+                      setSheet(() =>
+                          _subOffset = (_subOffset + d).clamp(-30.0, 30.0));
+                      _applySubDelay();
+                    }
+
+                    return Row(
+                      children: [
+                        _subStepBtn(Icons.remove_rounded, () => bump(-0.5)),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 84,
+                          child: Text(
+                            '${_subOffset >= 0 ? '+' : ''}${_subOffset.toStringAsFixed(1)}s',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700),
+                          ),
                         ),
-                      // Always-available fallback: the provider's own page in the
-                      // in-app browser, with its built-in sub / dub + subtitle
-                      // selector. Handy when a direct stream lacks subtitles.
+                        const SizedBox(width: 12),
+                        _subStepBtn(Icons.add_rounded, () => bump(0.5)),
+                        const Spacer(),
+                        if (_subOffset != 0)
+                          TextButton(
+                            onPressed: () {
+                              setSheet(() => _subOffset = 0);
+                              _applySubDelay();
+                            },
+                            child: const Text('Reset',
+                                style: TextStyle(color: AppColors.teal)),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 22),
+                _heading(Icons.dns_rounded, 'Server'),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    // Web player (provider page in the in-app browser) — listed
+                    // first as the most reliable option, with its own sub/dub +
+                    // subtitle selector.
+                    PlayerChip(
+                      label: 'Web player · reliable',
+                      active: false,
+                      onTap: () {
+                        Navigator.pop(context);
+                        _fallback();
+                      },
+                    ),
+                    for (int i = 0; i < _servers.length; i++)
                       PlayerChip(
-                        label: 'Web player',
-                        active: false,
+                        label: _servers[i].server.isEmpty
+                            ? 'Server ${i + 1}'
+                            : _servers[i].server,
+                        active: _currentCategory == null && i == _serverIndex,
                         onTap: () {
                           Navigator.pop(context);
-                          _fallback();
+                          if (_currentCategory != null || i != _serverIndex) {
+                            _extractServer(i);
+                          }
                         },
                       ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ],
             ),
           ),

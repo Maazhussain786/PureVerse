@@ -58,6 +58,7 @@ class _PartySyncedPlayerState extends ConsumerState<PartySyncedPlayer> {
   List<ExtractedSubtitle> _externalSubs = const [];
   String _qualityId = 'auto';
   String _subKey = 'off';
+  double _subOffset = 0.0; // subtitle delay in seconds (+ = later, − = earlier)
 
   // Controls visibility.
   bool _controlsVisible = true;
@@ -347,6 +348,17 @@ class _PartySyncedPlayerState extends ConsumerState<PartySyncedPlayer> {
     setState(() => _subKey = 'ext:${s.url}');
     _player.setSubtitleTrack(
         SubtitleTrack.uri(s.url, title: s.label, language: s.language));
+  }
+
+  /// Shift subtitle timing (mpv `sub-delay`, seconds) so subs line up with the
+  /// video — handy in a party where streams start a touch out of sync.
+  Future<void> _applySubDelay() async {
+    final p = _player.platform;
+    if (p is NativePlayer) {
+      try {
+        await p.setProperty('sub-delay', _subOffset.toStringAsFixed(2));
+      } catch (_) {/* property unavailable on this build */}
+    }
   }
 
   static String _langCode(String lang) {
@@ -750,6 +762,52 @@ class _PartySyncedPlayerState extends ConsumerState<PartySyncedPlayer> {
                         },
                       )),
                 ]),
+
+                const SizedBox(height: 22),
+                _heading(Icons.av_timer_rounded, 'Subtitle timing'),
+                const SizedBox(height: 6),
+                const Text('Nudge subtitles to line up with the video.',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                const SizedBox(height: 10),
+                StatefulBuilder(
+                  builder: (ctx, setSheet) {
+                    void bump(double d) {
+                      setSheet(() =>
+                          _subOffset = (_subOffset + d).clamp(-30.0, 30.0));
+                      _applySubDelay();
+                    }
+
+                    return Row(
+                      children: [
+                        _subStepBtn(Icons.remove_rounded, () => bump(-0.5)),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 84,
+                          child: Text(
+                            '${_subOffset >= 0 ? '+' : ''}${_subOffset.toStringAsFixed(1)}s',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _subStepBtn(Icons.add_rounded, () => bump(0.5)),
+                        const Spacer(),
+                        if (_subOffset != 0)
+                          TextButton(
+                            onPressed: () {
+                              setSheet(() => _subOffset = 0);
+                              _applySubDelay();
+                            },
+                            child: const Text('Reset',
+                                style: TextStyle(color: AppColors.teal)),
+                          ),
+                      ],
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -757,6 +815,20 @@ class _PartySyncedPlayerState extends ConsumerState<PartySyncedPlayer> {
       ),
     ).whenComplete(_restartHideTimer);
   }
+
+  Widget _subStepBtn(IconData icon, VoidCallback onTap) => Material(
+        color: AppColors.glassBackground,
+        shape: const CircleBorder(
+            side: BorderSide(color: AppColors.glassBorder)),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(icon, color: AppColors.textPrimary, size: 22),
+          ),
+        ),
+      );
 
   List<VideoTrack> _uniqueQualities() {
     final seen = <int>{};
