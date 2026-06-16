@@ -111,7 +111,8 @@ class ProfileScreen extends ConsumerWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const LibraryScreen())),
+                      builder: (_) =>
+                          const LibraryScreen(only: 'watchlist'))),
                   icon: const Icon(Icons.bookmark_rounded, size: 18),
                   label: const Text('My List'),
                 ),
@@ -120,12 +121,23 @@ class ProfileScreen extends ConsumerWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => const HistoryScreen())),
-                  icon: const Icon(Icons.history_rounded, size: 18),
-                  label: const Text('History'),
+                      builder: (_) =>
+                          const LibraryScreen(only: 'favorites'))),
+                  icon: const Icon(Icons.favorite_rounded, size: 18),
+                  label: const Text('Favorites'),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const HistoryScreen())),
+              icon: const Icon(Icons.history_rounded, size: 18),
+              label: const Text('History'),
+            ),
           ),
           const SizedBox(height: 10),
           SizedBox(

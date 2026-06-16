@@ -10,7 +10,15 @@ import '../../../../shared/widgets/media_poster_card.dart';
 import '../../../../shared/widgets/section_header.dart';
 
 class LibraryScreen extends ConsumerWidget {
-  const LibraryScreen({super.key});
+  /// null = both sections; 'watchlist' or 'favorites' = just that one.
+  final String? only;
+  const LibraryScreen({super.key, this.only});
+
+  String get _title => only == 'favorites'
+      ? 'Favorites'
+      : only == 'watchlist'
+          ? 'My List'
+          : 'My Library';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,7 +26,7 @@ class LibraryScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
-      appBar: AppBar(title: const Text('My Library')),
+      appBar: AppBar(title: Text(_title)),
       body: !auth.isSignedIn
           ? _signInPrompt(context)
           : _libraryBody(context, ref),
@@ -27,35 +35,49 @@ class LibraryScreen extends ConsumerWidget {
 
   Widget _libraryBody(BuildContext context, WidgetRef ref) {
     final state = ref.watch(userStateProvider);
+    final showWatch = only != 'favorites';
+    final showFav = only != 'watchlist';
+    final hasContent = (showWatch && state.watchlist.isNotEmpty) ||
+        (showFav && state.favorites.isNotEmpty);
     return RefreshIndicator(
       color: AppColors.accent,
       backgroundColor: AppColors.bgCard,
       onRefresh: () => ref.read(userStateProvider.notifier).reload(),
-      child: state.loading && state.isEmpty
+      child: state.loading && !hasContent
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.accent))
-          : state.isEmpty
+          : !hasContent
               ? _emptyLibrary()
               : ListView(
                   padding: const EdgeInsets.only(top: 8, bottom: 32),
                   children: [
-                    if (state.watchlist.isNotEmpty)
-                      _section('Watchlist', state.watchlist),
-                    if (state.favorites.isNotEmpty)
-                      _section('Favorites', state.favorites),
+                    if (showWatch && state.watchlist.isNotEmpty)
+                      _section(context, ref, 'Watchlist', state.watchlist,
+                          watchlist: true),
+                    if (showFav && state.favorites.isNotEmpty)
+                      _section(context, ref, 'Favorites', state.favorites,
+                          watchlist: false),
                   ],
                 ),
     );
   }
 
-  Widget _section(String title, List<MediaItem> items) {
+  Widget _section(BuildContext context, WidgetRef ref, String title,
+      List<MediaItem> items,
+      {required bool watchlist}) {
     return Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionHeader(title: '$title  (${items.length})'),
-          const SizedBox(height: 14),
+          const SizedBox(height: 6),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text('Tap to open · tap ✕ to remove',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          ),
+          const SizedBox(height: 10),
           SizedBox(
             height: 220,
             child: ListView.separated(
@@ -63,7 +85,23 @@ class LibraryScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: items.length,
               separatorBuilder: (_, _) => const SizedBox(width: 12),
-              itemBuilder: (_, i) => MediaPosterCard(item: items[i]),
+              itemBuilder: (_, i) => _RemovableCard(
+                item: items[i],
+                onRemove: () {
+                  final m = items[i];
+                  final notifier = ref.read(userStateProvider.notifier);
+                  if (watchlist) {
+                    notifier.removeWatchlist(m.id);
+                  } else {
+                    notifier.removeFavorite(m.id);
+                  }
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(SnackBar(
+                        content: Text('Removed "${m.title}"'),
+                        duration: const Duration(seconds: 2)));
+                },
+              ),
             ),
           ),
         ],
@@ -136,4 +174,41 @@ class LibraryScreen extends ConsumerWidget {
           ),
         ),
       );
+}
+
+/// A library poster (opens details on tap) with a ✕ to remove it from the list.
+class _RemovableCard extends StatelessWidget {
+  final MediaItem item;
+  final VoidCallback onRemove;
+  const _RemovableCard({required this.item, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 130,
+      child: Stack(
+        children: [
+          MediaPosterCard(item: item),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                ),
+                child: const Icon(Icons.close_rounded,
+                    color: Colors.white, size: 15),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
