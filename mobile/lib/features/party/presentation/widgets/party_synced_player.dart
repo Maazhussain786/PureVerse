@@ -24,7 +24,28 @@ const double _driftSeek = 1.25; // hard-seek when free-running drift exceeds thi
 ///  • reports its own buffering + position to the auto-wait coordinator,
 ///  • only emits transport changes when the member is allowed to control.
 class PartySyncedPlayer extends ConsumerStatefulWidget {
-  const PartySyncedPlayer({super.key});
+  const PartySyncedPlayer({
+    super.key,
+    this.fullscreen = false,
+    this.chatOpen = false,
+    this.onToggleFullscreen,
+    this.onToggleChat,
+  });
+
+  /// When true the player fills its parent (landscape fullscreen) instead of a
+  /// fixed 16:9 box, and surfaces an "exit fullscreen" + chat-overlay toggle.
+  final bool fullscreen;
+
+  /// Whether the landscape chat overlay is currently open (drives the chat
+  /// button's active state).
+  final bool chatOpen;
+
+  /// Enter/exit landscape fullscreen. When null, the fullscreen button hides.
+  final VoidCallback? onToggleFullscreen;
+
+  /// Open/close the YouTube-live-style chat overlay (only meaningful in
+  /// fullscreen). When null, the chat button hides.
+  final VoidCallback? onToggleChat;
 
   @override
   ConsumerState<PartySyncedPlayer> createState() => _PartySyncedPlayerState();
@@ -406,47 +427,48 @@ class _PartySyncedPlayerState extends ConsumerState<PartySyncedPlayer> {
     final holding = st.holding;
     final partyPlaying = st.room?.playback.isPlaying ?? false;
 
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: ColoredBox(
-        color: Colors.black,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _toggleControls,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (_phase == _Phase.playing)
-                Center(
-                  child: Video(
-                      controller: _controller,
-                      controls: NoVideoControls,
-                      fit: BoxFit.contain),
-                )
-              else if (_phase == _Phase.unsupported)
-                _unsupportedView()
-              else
-                _loadingView(),
+    final content = ColoredBox(
+      color: Colors.black,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _toggleControls,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (_phase == _Phase.playing)
+              Center(
+                child: Video(
+                    controller: _controller,
+                    controls: NoVideoControls,
+                    fit: BoxFit.contain),
+              )
+            else if (_phase == _Phase.unsupported)
+              _unsupportedView()
+            else
+              _loadingView(),
 
-              if (_phase == _Phase.playing) ...[
-                if (_buffering && !_controlsVisible)
-                  const Center(
-                      child: CircularProgressIndicator(color: AppColors.accent)),
-                AnimatedOpacity(
-                  opacity: _controlsVisible ? 1 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: IgnorePointer(
-                    ignoring: !_controlsVisible,
-                    child: _overlay(st, partyPlaying),
-                  ),
+            if (_phase == _Phase.playing) ...[
+              if (_buffering && !_controlsVisible)
+                const Center(
+                    child: CircularProgressIndicator(color: AppColors.accent)),
+              AnimatedOpacity(
+                opacity: _controlsVisible ? 1 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: IgnorePointer(
+                  ignoring: !_controlsVisible,
+                  child: _overlay(st, partyPlaying),
                 ),
-                if (holding) _holdOverlay(st),
-              ],
+              ),
+              if (holding) _holdOverlay(st),
             ],
-          ),
+          ],
         ),
       ),
     );
+
+    return widget.fullscreen
+        ? content
+        : AspectRatio(aspectRatio: 16 / 9, child: content);
   }
 
   Widget _loadingView() => Center(
@@ -526,10 +548,25 @@ class _PartySyncedPlayerState extends ConsumerState<PartySyncedPlayer> {
                   ),
                 ),
                 const Spacer(),
+                if (widget.fullscreen && widget.onToggleChat != null)
+                  PlayerIconButton(
+                      icon: widget.chatOpen
+                          ? Icons.chat_bubble_rounded
+                          : Icons.chat_bubble_outline_rounded,
+                      tooltip: widget.chatOpen ? 'Hide chat' : 'Show chat',
+                      onTap: widget.onToggleChat!),
                 PlayerIconButton(
                     icon: Icons.settings_rounded,
                     tooltip: 'Quality & subtitles',
                     onTap: _openSettings),
+                if (widget.onToggleFullscreen != null)
+                  PlayerIconButton(
+                      icon: widget.fullscreen
+                          ? Icons.fullscreen_exit_rounded
+                          : Icons.fullscreen_rounded,
+                      tooltip:
+                          widget.fullscreen ? 'Exit fullscreen' : 'Fullscreen',
+                      onTap: widget.onToggleFullscreen!),
               ],
             ),
           ),

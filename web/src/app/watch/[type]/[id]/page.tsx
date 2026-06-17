@@ -73,7 +73,22 @@ function WatchPageInner() {
   const [autoplayNext, setAutoplayNext] = useState(true);
   const [partyOpen, setPartyOpen] = useState(false);
   const [shared, setShared] = useState(false);
+  const [tipOpen, setTipOpen] = useState(true);
   const lastProgressSync = useRef(0);
+
+  // ─── Playback tip (dismissible, remembered) ───
+  useEffect(() => {
+    try {
+      setTipOpen(localStorage.getItem("pureverse_player_tip") !== "dismissed");
+    } catch { /* default shown */ }
+  }, []);
+
+  const dismissTip = () => {
+    setTipOpen(false);
+    try {
+      localStorage.setItem("pureverse_player_tip", "dismissed");
+    } catch { /* ignore */ }
+  };
 
   // ─── Autoplay preference (profile pref > localStorage) ───
   useEffect(() => {
@@ -332,6 +347,37 @@ function WatchPageInner() {
         <div className={`watch-theater-layout ${isSeries ? "is-series" : ""}`}>
           {/* Player column */}
           <div className="flex-1 min-w-0">
+            {/* ─── Pre-play tip: switch servers on issues ─── */}
+            {tipOpen && (
+              <div
+                className="flex items-start gap-3 rounded-2xl border border-[var(--accent-primary)]/25 bg-[var(--accent-primary)]/[0.07] mb-3"
+                style={{ padding: "12px 16px", gap: "12px", marginBottom: "12px" }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2" className="flex-shrink-0 mt-0.5">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4M12 8h.01" />
+                </svg>
+                <p className="flex-1 text-xs md:text-[13px] text-[var(--text-secondary)] leading-relaxed">
+                  Before you start — if the video won&apos;t play, buffers, or the subtitles look
+                  off, just <span className="font-semibold text-white">switch servers</span> below
+                  (or tap <span className="font-semibold text-white">Switch Server</span> on the
+                  player).
+                  {type === "anime" && (
+                    <> For anime, pick a <span className="font-semibold text-[var(--accent-primary)]">SUB</span> server
+                    for Japanese audio with English subtitles, or <span className="font-semibold text-[var(--accent-teal)]">DUB</span> for English.</>
+                  )}
+                </p>
+                <button
+                  onClick={dismissTip}
+                  aria-label="Dismiss tip"
+                  className="flex-shrink-0 text-[var(--text-muted)] hover:text-white transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
             <div className="relative w-full aspect-video rounded-2xl bg-black ring-1 ring-white/[0.08] shadow-[0_8px_50px_rgba(0,0,0,0.85)]">
               {loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black rounded-2xl">

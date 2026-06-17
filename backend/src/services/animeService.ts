@@ -121,6 +121,66 @@ export async function searchAnime(query: string): Promise<UnifiedMediaItem[]> {
   }
 }
 
+// ─── MAL id resolution (for the VidLink anime SUB/DUB embed route) ────────
+// Given a display title (and optional original/Japanese title), find the best
+// matching MyAnimeList id. Used to build vidlink.pro/anime/<malId>/<ep>/<sub|dub>
+// embeds, which give true Japanese-audio + English-subtitle anime (and an
+// English dub) — instead of the TMDB-mapped, dub-only embeds. Best-effort:
+// returns null on any failure so the caller falls back to the TMDB embeds.
+export async function resolveMalId(
+  title: string,
+  altTitle?: string
+): Promise<string | null> {
+  const queries = [title, altTitle].filter(
+    (q): q is string => !!q && q.trim().length > 0
+  );
+  if (queries.length === 0) return null;
+
+  const cacheKey = `mal_id_${queries[0].toLowerCase()}`;
+  const cached = cache.get<string | null>(cacheKey);
+  if (cached !== undefined) return cached;
+
+  for (const q of queries) {
+    try {
+      const response = await rateLimitedGet(jikanApi, '/anime', {
+        q,
+        limit: 5,
+        sfw: true,
+      });
+      const list: any[] = response.data?.data || [];
+      if (!list.length) continue;
+
+      const lower = q.toLowerCase();
+      const notMovie = (a: any) => String(a.type).toUpperCase() !== 'MOVIE';
+      const pick =
+        // Exact title match that isn't a movie
+        list.find(
+          (a) =>
+            notMovie(a) &&
+            [a.title, a.title_english, a.title_japanese]
+              .filter(Boolean)
+              .some((t: string) => t.toLowerCase() === lower)
+        ) ||
+        // First TV / ONA series
+        list.find((a) => ['TV', 'ONA'].includes(String(a.type).toUpperCase())) ||
+        // Any non-movie
+        list.find(notMovie) ||
+        list[0];
+
+      if (pick?.mal_id) {
+        const malId = String(pick.mal_id);
+        cache.set(cacheKey, malId, 86400); // ids are stable: cache 1 day
+        return malId;
+      }
+    } catch (error: any) {
+      console.error('[animeService] resolveMalId failed:', error?.message);
+    }
+  }
+
+  cache.set(cacheKey, null, 3600); // negative cache: avoid hammering Jikan
+  return null;
+}
+
 // ─── Anime Details ────────────────────────────────────────
 export async function getAnimeDetails(malId: string): Promise<MediaDetails> {
   const cacheKey = `jikan_details_${malId}`;

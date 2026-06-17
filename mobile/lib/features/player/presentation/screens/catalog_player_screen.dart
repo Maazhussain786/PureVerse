@@ -103,6 +103,7 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
 
   bool _controlsVisible = true;
   Timer? _hideTimer;
+  bool _tipShown = false; // one-time "switch server" hint per screen
 
   // True while we're replacing this screen with the iframe player. During a
   // pushReplacement this screen's dispose() runs *after* the iframe screen's
@@ -276,6 +277,8 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
             .map((s) => ExtractedSubtitle(s.lang, _langCode(s.lang), s.url))
             .toList();
       });
+
+      _maybeShowSwitchTip();
 
       // PRIMARY: a server-scraped direct stream (HiAnime sub/dub + subtitles).
       if (direct.isNotEmpty) {
@@ -564,6 +567,22 @@ class _CatalogPlayerScreenState extends ConsumerState<CatalogPlayerScreen> {
           ),
         ),
       );
+
+  /// One-time hint: switching servers / SUB-DUB lives in the settings sheet.
+  void _maybeShowSwitchTip() {
+    if (_tipShown || !mounted) return;
+    _tipShown = true;
+    final isAnime = widget.mediaType == 'anime';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        content: Text(isAnime
+            ? 'Tip: tap ⚙ for SUB (Japanese + subtitles) / DUB and to switch servers if there are issues.'
+            : 'Tip: playback or subtitle issues? Tap ⚙ to switch servers.'),
+      ));
+  }
 
   // ─── Controls visibility ───
   void _togglePlay() {

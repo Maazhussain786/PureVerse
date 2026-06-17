@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_colors.dart';
@@ -29,6 +30,14 @@ class _PartyRoomScreenState extends ConsumerState<PartyRoomScreen> {
   final _gatePassword = TextEditingController();
   bool _joining = false;
 
+  // Landscape fullscreen (YouTube-live style): the player fills the screen and
+  // chat becomes a toggleable overlay you can open, type in, and close.
+  bool _fullscreen = false;
+  bool _chatOverlay = false;
+  // Keeps the same player State (and its live stream) when the layout moves
+  // between the normal column and the fullscreen Stack.
+  final GlobalKey _playerKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -41,10 +50,34 @@ class _PartyRoomScreenState extends ConsumerState<PartyRoomScreen> {
   void dispose() {
     _gateName.dispose();
     _gatePassword.dispose();
+    // Restore portrait + system UI if we left while still in fullscreen.
+    if (_fullscreen) {
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
     // Leaving the screen leaves the room (also tears down the voice mesh, which
     // is an autoDispose provider scoped to this screen).
     ref.read(partyControllerProvider.notifier).leave();
     super.dispose();
+  }
+
+  // ─── Landscape fullscreen ───
+  void _enterFullscreen() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    setState(() => _fullscreen = true);
+  }
+
+  void _exitFullscreen() {
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    setState(() {
+      _fullscreen = false;
+      _chatOverlay = false;
+    });
   }
 
   void _ensureSeasons(PartyMedia media) {
@@ -72,11 +105,19 @@ class _PartyRoomScreenState extends ConsumerState<PartyRoomScreen> {
       }
     });
 
+    // In fullscreen, the back gesture/button exits fullscreen instead of
+    // leaving the party.
     return PopScope(
-      canPop: true,
+      canPop: !_fullscreen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _fullscreen) _exitFullscreen();
+      },
       child: Scaffold(
         backgroundColor: AppColors.bgPrimary,
-        body: SafeArea(child: _body(st)),
+        // Keep the player full-bleed when the keyboard opens in fullscreen; the
+        // chat overlay lifts its own composer above the keyboard manually.
+        resizeToAvoidBottomInset: !_fullscreen,
+        body: _fullscreen ? _body(st) : SafeArea(child: _body(st)),
       ),
     );
   }
@@ -106,15 +147,97 @@ class _PartyRoomScreenState extends ConsumerState<PartyRoomScreen> {
     _ensureSeasons(room.media);
     final selfMuted = st.self?.muted ?? false;
 
+    if (_fullscreen) return _fullscreenRoom(st, room, selfMuted);
+
     return Column(
       children: [
         _topBar(st, room),
-        const PartySyncedPlayer(),
+        PartySyncedPlayer(key: _playerKey, onToggleFullscreen: _enterFullscreen),
         _voiceBar(st),
         if (st.isHost && st.buffering.isNotEmpty && !st.holding) _bufferingStrip(st),
         _tabBar(room),
         Expanded(child: _tabBody(st, room, selfMuted)),
       ],
+    );
+  }
+
+  // ─── Fullscreen (landscape) room ───
+  // The player fills the screen; chat is a YouTube-live-style overlay the user
+  // can open, type in, and close without leaving fullscreen.
+  Widget _fullscreenRoom(PartyState st, PartyRoom room, bool selfMuted) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: PartySyncedPlayer(
+            key: _playerKey,
+            fullscreen: true,
+            chatOpen: _chatOverlay,
+            onToggleFullscreen: _exitFullscreen,
+            onToggleChat: () => setState(() => _chatOverlay = !_chatOverlay),
+          ),
+        ),
+        if (_chatOverlay) _chatOverlayPanel(st, room, selfMuted),
+      ],
+    );
+  }
+
+  Widget _chatOverlayPanel(PartyState st, PartyRoom room, bool selfMuted) {
+    final size = MediaQuery.of(context).size;
+    final insets = MediaQuery.of(context).viewInsets;
+    final panelWidth = (size.width * 0.42).clamp(300.0, 460.0);
+    return Positioned(
+      top: 0,
+      right: 0,
+      bottom: 0,
+      width: panelWidth,
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.82),
+        child: SafeArea(
+          left: false,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+                child: Row(
+                  children: [
+                    const Icon(Icons.chat_bubble_rounded,
+                        size: 16, color: AppColors.teal),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text('Live chat · ${room.members.length}',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700)),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.close_rounded,
+                          color: Colors.white, size: 20),
+                      tooltip: 'Close chat',
+                      onPressed: () => setState(() => _chatOverlay = false),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.glassBorder),
+              // Lift the composer above the soft keyboard manually (the Scaffold
+              // doesn't resize in fullscreen, so the player stays full-bleed).
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: insets.bottom),
+                  child: PartyChat(
+                    messages: room.chat,
+                    selfId: st.selfId,
+                    muted: selfMuted,
+                    onSend: ref.read(partyControllerProvider.notifier).sendChat,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

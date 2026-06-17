@@ -1,5 +1,5 @@
 import { StreamPayload, StreamSource, Subtitle } from '../models/media';
-import { getAnimeDetails } from '../services/animeService';
+import { getAnimeDetails, resolveMalId } from '../services/animeService';
 import { searchTmdb, getTmdbDetails } from '../services/metadataService';
 import { fetchHiAnimeStream } from '../services/aniwatchService';
 
@@ -28,19 +28,19 @@ export async function resolveVidSrcStream(
 
   if (type === 'movie') {
     // ── MOVIE servers (film/TV catalogue providers — kept separate from anime) ──
-    // Ordered most-reliable-first (VidFast). Each entry is a Switch-Server
-    // fallback the client auto-advances to if one is blocked or has no source.
+    // VidLink is the DEFAULT web player (first); the rest are Switch-Server
+    // fallbacks the client auto-advances to if one is blocked or has no source.
     sources.push(
-      {
-        server: 'VidFast',
-        quality: 'Auto',
-        url: `https://vidfast.pro/movie/${rawId}?autoPlay=true`,
-        type: 'embed',
-      },
       {
         server: 'VidLink',
         quality: 'Auto',
         url: `https://vidlink.pro/movie/${rawId}`,
+        type: 'embed',
+      },
+      {
+        server: 'VidFast',
+        quality: 'Auto',
+        url: `https://vidfast.pro/movie/${rawId}?autoPlay=true`,
         type: 'embed',
       },
       {
@@ -64,20 +64,20 @@ export async function resolveVidSrcStream(
     );
   } else if (type === 'tv') {
     // ── TV servers (film/TV catalogue providers — kept separate from anime) ──
-    // VidFast first (most reliable for TV); the rest are Switch-Server fallbacks.
+    // VidLink is the DEFAULT web player (first); the rest are Switch-Server fallbacks.
     const s = season || '1';
     const e = episode || '1';
     sources.push(
       {
-        server: 'VidFast',
-        quality: 'Auto',
-        url: `https://vidfast.pro/tv/${rawId}/${s}/${e}?autoPlay=true`,
-        type: 'embed',
-      },
-      {
         server: 'VidLink',
         quality: 'Auto',
         url: `https://vidlink.pro/tv/${rawId}/${s}/${e}`,
+        type: 'embed',
+      },
+      {
+        server: 'VidFast',
+        quality: 'Auto',
+        url: `https://vidfast.pro/tv/${rawId}/${s}/${e}?autoPlay=true`,
         type: 'embed',
       },
       {
@@ -101,8 +101,13 @@ export async function resolveVidSrcStream(
     );
   } else if (type === 'anime') {
     let tmdbId = rawId;
+    let malId: string | null = null;
     let searchTitle = '';
     let altTitle = '';
+    const s = season || '1';
+    const e = episode || '1';
+    const epNum = parseInt(episode || '1', 10) || 1;
+
     // HiAnime (aniwatch) is currently broken upstream, so it's OFF by default —
     // skipping it keeps anime fast and avoids error-log noise. Flip
     // ENABLE_HIANIME=true once aniwatch can parse the live site again, and the
@@ -110,13 +115,15 @@ export async function resolveVidSrcStream(
     const hiAnimeEnabled = process.env.ENABLE_HIANIME === 'true';
 
     if (id.startsWith('mal_')) {
+      // Already a MyAnimeList id — the ideal input for the SUB/DUB anime embeds.
+      malId = rawId;
       try {
         const animeDetails = await getAnimeDetails(rawId);
         searchTitle = animeDetails?.title || '';
         altTitle = animeDetails?.originalTitle || '';
-        // Map to a TMDB id for the iframe servers (needed regardless of HiAnime).
-        if (animeDetails && animeDetails.title) {
-          const tmdbResults = await searchTmdb(animeDetails.title);
+        // Map to a TMDB id for the fallback iframe servers.
+        if (searchTitle) {
+          const tmdbResults = await searchTmdb(searchTitle);
           const tvResult = tmdbResults.find(r => r.type === 'tv' || r.type === 'anime');
           if (tvResult) {
             tmdbId = tvResult.id.replace('tmdb_', '');
@@ -125,8 +132,9 @@ export async function resolveVidSrcStream(
       } catch (e) {
         console.error('Failed to map Anime MAL ID to TMDB ID for streaming', e);
       }
-    } else if (hiAnimeEnabled) {
-      // The title is only needed for the HiAnime search.
+    } else {
+      // TMDB-based anime — fetch the title so we can resolve a MyAnimeList id
+      // for the SUB/DUB anime embeds (and for the optional HiAnime search).
       try {
         const d = await getTmdbDetails('tv', rawId);
         searchTitle = d?.title || '';
@@ -137,10 +145,10 @@ export async function resolveVidSrcStream(
           e?.response?.status || e?.message
         );
       }
+      malId = await resolveMalId(searchTitle, altTitle);
     }
 
     // ── PRIMARY (optional): HiAnime direct stream (real SUB + DUB + subtitles) ──
-    const epNum = parseInt(episode || '1', 10) || 1;
     let direct = hiAnimeEnabled && searchTitle
         ? await fetchHiAnimeStream(searchTitle, epNum)
         : null;
@@ -149,13 +157,13 @@ export async function resolveVidSrcStream(
       direct = await fetchHiAnimeStream(altTitle, epNum);
     }
     if (direct) {
-      for (const s of direct.sources) {
+      for (const src of direct.sources) {
         sources.push({
-          server: `HiAnime ${s.category.toUpperCase()}`,
-          quality: s.quality,
-          url: s.url,
+          server: `HiAnime ${src.category.toUpperCase()}`,
+          quality: src.quality,
+          url: src.url,
           type: 'direct',
-          category: s.category,
+          category: src.category,
           headers: direct.headers,
         });
       }
@@ -164,14 +172,44 @@ export async function resolveVidSrcStream(
       }
     }
 
-    // ── FALLBACK: iframe embeds (always available; provider-side sub/dub) ──
-    if (tmdbId) {
-      const s = season || '1';
-      const e = episode || '1';
+    // ── ANIME SUB / DUB embeds (MyAnimeList-based — the real subbed experience) ──
+    // VidLink's /anime/ route plays the ORIGINAL JAPANESE audio with English
+    // subtitles (SUB) — what most fans want — plus a separate English DUB, each
+    // in VidLink's own player with its subtitle selector. SUB is listed FIRST so
+    // it's the anime default. Requires a MAL id; when one can't be resolved we
+    // fall back to the TMDB embeds below. Episode numbers are absolute within
+    // the MAL entry (exact for mal_ ids; season-1 accurate for TMDB ids — use
+    // Switch Server for later cours).
+    if (malId) {
+      sources.push(
+        {
+          server: 'VidLink · SUB',
+          quality: 'Auto',
+          url: `https://vidlink.pro/anime/${malId}/${epNum}/sub`,
+          type: 'embed',
+          category: 'sub',
+        },
+        {
+          server: 'Vidnest · SUB',
+          quality: 'Auto',
+          url: `https://vidnest.fun/anime/${malId}/${epNum}/sub`,
+          type: 'embed',
+          category: 'sub',
+        },
+        {
+          server: 'VidLink · DUB',
+          quality: 'Auto',
+          url: `https://vidlink.pro/anime/${malId}/${epNum}/dub`,
+          type: 'embed',
+          category: 'dub',
+        }
+      );
+    }
 
-      // ── ANIME servers (kept SEPARATE from movie/TV) ──
-      // Anime is mapped onto a TMDB TV id. VidLink first; the rest are
-      // Switch-Server fallbacks.
+    // ── FALLBACK: TMDB-based embeds (always available; provider-side audio) ──
+    // Anime is mapped onto a TMDB TV id. These are multi-audio Switch-Server
+    // fallbacks for when the MAL-based SUB/DUB embeds above are unavailable.
+    if (tmdbId) {
       sources.push(
         {
           server: 'VidLink',
@@ -185,7 +223,7 @@ export async function resolveVidSrcStream(
           quality: 'Auto',
           url: `https://www.2embed.cc/embedtv/${tmdbId}&s=${s}&e=${e}`,
           type: 'embed',
-          category: 'sub',
+          category: 'multi',
         },
         {
           server: 'VidSrc',

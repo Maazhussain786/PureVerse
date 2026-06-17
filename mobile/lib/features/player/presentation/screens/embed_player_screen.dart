@@ -49,6 +49,7 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   Object? _error;
   int _selected = 0;
   InAppWebViewController? _webController;
+  bool _tipShown = false; // one-time "switch server" hint
   final Set<int> _failed = {}; // server indices that errored — skip on auto-failover
 
   late int? _season = widget.season;
@@ -82,9 +83,27 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
         final i = payload.sources.indexWhere((s) => s.isEmbed);
         _selected = i >= 0 ? i : 0;
       });
+      _maybeShowSwitchTip();
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
+  }
+
+  /// One-time hint pointing at the server switcher in the top bar.
+  void _maybeShowSwitchTip() {
+    if (_tipShown || !mounted) return;
+    if ((_payload?.sources.length ?? 0) < 2) return;
+    _tipShown = true;
+    final isAnime = widget.mediaType == 'anime';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        content: Text(isAnime
+            ? 'Tip: use the server menu for SUB (Japanese + subtitles) / DUB, or to switch if there are issues.'
+            : 'Tip: won\'t play or subtitles off? Tap the server icon to switch.'),
+      ));
   }
 
   void _openEpisodes() {
