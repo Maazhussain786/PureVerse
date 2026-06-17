@@ -8,6 +8,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/stream_extractor.dart';
 import '../../../../shared/providers/api_providers.dart';
+import '../../../player/presentation/screens/embed_player_screen.dart';
 import '../../../player/presentation/widgets/player_controls.dart';
 import '../../application/party_controller.dart';
 import '../../data/party_models.dart';
@@ -700,6 +701,35 @@ class _PartySyncedPlayerState extends ConsumerState<PartySyncedPlayer> {
     );
   }
 
+  /// Open the provider's Web player (its own subtitle + server selector) for
+  /// THIS viewer — the same escape hatch as the normal player. It leaves
+  /// hard-sync; the party keeps running underneath and we re-align to the live
+  /// position when you come back. Local audio is paused so it doesn't play
+  /// behind the web player.
+  Future<void> _openWebPlayer() async {
+    final media = ref.read(partyControllerProvider).room?.media;
+    if (media == null) return;
+    final wasPlaying = _playing;
+    await _player.pause();
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => EmbedPlayerScreen(
+        mediaType: media.type,
+        mediaId: media.id,
+        title: media.title,
+        posterUrl: media.posterUrl ?? '',
+        season: media.season,
+        episode: media.episode,
+      ),
+    ));
+    if (!mounted) return;
+    final pb = ref.read(partyControllerProvider).room?.playback;
+    if (pb != null) {
+      await _player.seek(Duration(milliseconds: (pb.livePosition * 1000).round()));
+    }
+    if (wasPlaying && (pb?.isPlaying ?? false)) _player.play();
+  }
+
   void _openSettings() {
     _hideTimer?.cancel();
     final st = ref.read(partyControllerProvider);
@@ -845,6 +875,27 @@ class _PartySyncedPlayerState extends ConsumerState<PartySyncedPlayer> {
                     );
                   },
                 ),
+
+                const SizedBox(height: 22),
+                _heading(Icons.dns_rounded, 'Server'),
+                const SizedBox(height: 6),
+                const Text(
+                    "No subtitles or won't play? Open the Web player for the "
+                    "provider's own subtitle & server options. It leaves sync "
+                    "for you — the party keeps going and you rejoin live when "
+                    "you come back.",
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                const SizedBox(height: 10),
+                Wrap(spacing: 10, runSpacing: 10, children: [
+                  PlayerChip(
+                    label: 'Web player · subtitles',
+                    active: false,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _openWebPlayer();
+                    },
+                  ),
+                ]),
               ],
             ),
           ),

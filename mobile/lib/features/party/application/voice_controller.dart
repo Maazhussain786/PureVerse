@@ -73,6 +73,13 @@ class VoiceController extends StateNotifier<VoiceUiState> {
   late final io.Socket _socket;
   MediaStream? _localStream;
   final Map<String, _Peer> _peers = {};
+  // De-dupes concurrent peer creation. `createPeerConnection` is async, so
+  // without this the two near-simultaneous reconciles when a 2nd member joins
+  // (one from joinVoice, one from the party:voice-state broadcast) both pass the
+  // "peer doesn't exist yet" check and build TWO connections + fire duplicate
+  // offers — which crashes libwebrtc natively and kills the app. The web client
+  // never hits this because RTCPeerConnection there is created synchronously.
+  final Map<String, Future<_Peer?>> _creating = {};
   List<Map<String, dynamic>> _lastVoiceState = const [];
 
   // STUN + a public TURN relay. TURN is essential for phones on mobile data /
@@ -148,6 +155,7 @@ class VoiceController extends StateNotifier<VoiceUiState> {
     for (final id in _peers.keys.toList()) {
       _closePeer(id);
     }
+    _creating.clear();
     await _stopLocal();
     state = const VoiceUiState();
   }
@@ -194,8 +202,13 @@ class VoiceController extends StateNotifier<VoiceUiState> {
       if (!inVoiceIds.contains(id)) _closePeer(id);
     }
     // We initiate to peers with a larger id; smaller-id peers initiate to us.
+    // Skip anyone we're already connected to OR already building a connection
+    // for — that guard (plus the de-dupe in _createPeer) is what stops the
+    // duplicate-offer crash.
     for (final id in inVoiceIds) {
-      if (!_peers.containsKey(id) && _selfId.compareTo(id) < 0) {
+      if (_selfId.compareTo(id) < 0 &&
+          !_peers.containsKey(id) &&
+          !_creating.containsKey(id)) {
         _connectTo(id);
       }
     }
@@ -205,12 +218,19 @@ class VoiceController extends StateNotifier<VoiceUiState> {
   Future<void> _connectTo(String peerId) async {
     final peer = await _createPeer(peerId);
     if (peer == null) return;
-    final offer = await peer.pc.createOffer({});
-    await peer.pc.setLocalDescription(offer);
-    _signal(peerId, {'kind': 'offer', 'sdp': offer.sdp, 'type': offer.type});
+    try {
+      final offer = await peer.pc.createOffer({});
+      await peer.pc.setLocalDescription(offer);
+      _signal(peerId, {'kind': 'offer', 'sdp': offer.sdp, 'type': offer.type});
+    } catch (_) {
+      _closePeer(peerId); // negotiation failed — drop, don't crash the mesh
+    }
   }
 
   // ─── Signaling: SDP / ICE relay ─────────────────────────
+  // Every SDP/ICE step is wrapped: a failure drops just that peer instead of
+  // throwing into libwebrtc and taking the app down. The next voice-state
+  // reconcile re-establishes the connection cleanly.
   Future<void> _onSignal(dynamic raw) async {
     if (raw is! Map) return;
     final from = raw['from']?.toString();
@@ -218,53 +238,87 @@ class VoiceController extends StateNotifier<VoiceUiState> {
     if (from == null || data == null) return;
     final kind = data['kind'];
 
-    if (kind == 'offer') {
-      if (!state.inVoice) return; // not listening
-      final peer = await _createPeer(from);
-      if (peer == null) return;
-      await peer.pc.setRemoteDescription(
-          RTCSessionDescription(data['sdp']?.toString(), data['type']?.toString()));
-      peer.remoteDescSet = true;
-      await _flushIce(peer);
-      final answer = await peer.pc.createAnswer({});
-      await peer.pc.setLocalDescription(answer);
-      _signal(from, {'kind': 'answer', 'sdp': answer.sdp, 'type': answer.type});
-    } else if (kind == 'answer') {
-      final peer = _peers[from];
-      if (peer == null) return;
-      await peer.pc.setRemoteDescription(
-          RTCSessionDescription(data['sdp']?.toString(), data['type']?.toString()));
-      peer.remoteDescSet = true;
-      await _flushIce(peer);
-    } else if (kind == 'ice') {
-      final peer = _peers[from];
-      if (peer == null) return;
-      final c = RTCIceCandidate(
-        data['candidate']?.toString(),
-        data['sdpMid']?.toString(),
-        (data['sdpMLineIndex'] as num?)?.toInt(),
-      );
-      if (peer.remoteDescSet) {
-        await peer.pc.addCandidate(c);
-      } else {
-        peer.pendingIce.add(c); // buffer until remote description arrives
+    try {
+      if (kind == 'offer') {
+        if (!state.inVoice) return; // not listening
+        // Ignore a duplicate/renegotiation offer for a peer we already set up —
+        // re-applying a remote offer is a classic native crash.
+        final already = _peers[from];
+        if (already != null && already.remoteDescSet) return;
+        final peer = await _createPeer(from);
+        if (peer == null) return;
+        await peer.pc.setRemoteDescription(
+            RTCSessionDescription(data['sdp']?.toString(), data['type']?.toString()));
+        peer.remoteDescSet = true;
+        await _flushIce(peer);
+        final answer = await peer.pc.createAnswer({});
+        await peer.pc.setLocalDescription(answer);
+        _signal(from, {'kind': 'answer', 'sdp': answer.sdp, 'type': answer.type});
+      } else if (kind == 'answer') {
+        final peer = _peers[from];
+        if (peer == null || peer.remoteDescSet) return; // ignore stray/duplicate
+        await peer.pc.setRemoteDescription(
+            RTCSessionDescription(data['sdp']?.toString(), data['type']?.toString()));
+        peer.remoteDescSet = true;
+        await _flushIce(peer);
+      } else if (kind == 'ice') {
+        final peer = _peers[from];
+        if (peer == null) return;
+        final c = RTCIceCandidate(
+          data['candidate']?.toString(),
+          data['sdpMid']?.toString(),
+          (data['sdpMLineIndex'] as num?)?.toInt(),
+        );
+        if (peer.remoteDescSet) {
+          await peer.pc.addCandidate(c);
+        } else {
+          peer.pendingIce.add(c); // buffer until remote description arrives
+        }
       }
+    } catch (_) {
+      _closePeer(from);
     }
   }
 
-  Future<_Peer?> _createPeer(String peerId) async {
+  /// Get-or-create the peer for [peerId], de-duping concurrent creation so two
+  /// reconciles can't build two connections for the same peer (the join crash).
+  Future<_Peer?> _createPeer(String peerId) {
     final existing = _peers[peerId];
-    if (existing != null) return existing;
+    if (existing != null) return Future.value(existing);
+    final inFlight = _creating[peerId];
+    if (inFlight != null) return inFlight;
+    final fut = _buildPeer(peerId);
+    _creating[peerId] = fut;
+    fut.whenComplete(() => _creating.remove(peerId));
+    return fut;
+  }
+
+  Future<_Peer?> _buildPeer(String peerId) async {
     final local = _localStream;
     if (local == null) return null;
 
-    final pc = await createPeerConnection(_rtcConfig);
+    RTCPeerConnection pc;
+    try {
+      pc = await createPeerConnection(_rtcConfig);
+    } catch (_) {
+      return null;
+    }
+    // Another path may have created (or we may have torn down) while awaiting.
+    if (!mounted || _peers.containsKey(peerId)) {
+      try {
+        await pc.close();
+      } catch (_) {}
+      return _peers[peerId];
+    }
+
     final peer = _Peer(pc);
     _peers[peerId] = peer;
 
-    for (final track in local.getTracks()) {
-      await pc.addTrack(track, local);
-    }
+    try {
+      for (final track in local.getTracks()) {
+        await pc.addTrack(track, local);
+      }
+    } catch (_) {/* sender setup is best-effort */}
 
     pc.onIceCandidate = (RTCIceCandidate c) {
       if (c.candidate == null) return;
@@ -293,7 +347,7 @@ class VoiceController extends StateNotifier<VoiceUiState> {
       }
     };
 
-    state = state.copyWith(peerCount: _peers.length);
+    if (mounted) state = state.copyWith(peerCount: _peers.length);
     return peer;
   }
 
@@ -357,6 +411,7 @@ class VoiceController extends StateNotifier<VoiceUiState> {
     for (final id in _peers.keys.toList()) {
       _closePeer(id);
     }
+    _creating.clear();
     _stopLocal();
     super.dispose();
   }
