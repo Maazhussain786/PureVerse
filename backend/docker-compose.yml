@@ -38,6 +38,27 @@ services:
     depends_on:
       - backend
 
+  # Optional TURN relay for watch-party voice (WebRTC). Without TURN, voice only
+  # connects on simple NAT (often only same Wi-Fi); TURN makes it work across
+  # mobile data / strict NAT. Opt-in so the default deploy is unchanged:
+  #   docker compose --profile voice up -d --build
+  # Firewall: open UDP+TCP 3478 and UDP 49160-49200 on the droplet. Set TURN_* in
+  # .env, and point TURN_URLS (served to clients via /api/rtc/ice) at this host.
+  coturn:
+    image: coturn/coturn:4.6-alpine
+    restart: unless-stopped
+    network_mode: host
+    profiles: ["voice"]
+    command: >
+      -n --log-file=stdout
+      --lt-cred-mech --fingerprint
+      --no-tls --no-dtls --no-cli
+      --realm=${TURN_REALM:-pureverse}
+      --user=${TURN_USERNAME}:${TURN_PASSWORD}
+      --external-ip=${TURN_PUBLIC_IP}
+      --listening-port=3478
+      --min-port=49160 --max-port=49200
+
 volumes:
   caddy_data:
   caddy_config:

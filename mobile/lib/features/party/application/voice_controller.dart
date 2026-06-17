@@ -6,6 +6,8 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 
+import '../../../core/network/api_client.dart';
+import '../../../shared/providers/api_providers.dart';
 import '../data/party_socket.dart';
 
 /// Local voice state surfaced to the UI (the authoritative per-member flags for
@@ -64,12 +66,13 @@ class _Peer {
 /// Glare rule (matches the web client): the peer with the lexicographically
 /// smaller socketId is the offerer.
 class VoiceController extends StateNotifier<VoiceUiState> {
-  VoiceController() : super(const VoiceUiState()) {
+  VoiceController(this._api) : super(const VoiceUiState()) {
     _socket = partySocket();
     _socket.on('party:voice-state', _onVoiceState);
     _socket.on('party:rtc-signal', _onSignal);
   }
 
+  final ApiClient _api;
   late final io.Socket _socket;
   MediaStream? _localStream;
   final Map<String, _Peer> _peers = {};
@@ -82,32 +85,33 @@ class VoiceController extends StateNotifier<VoiceUiState> {
   final Map<String, Future<_Peer?>> _creating = {};
   List<Map<String, dynamic>> _lastVoiceState = const [];
 
-  // STUN + a public TURN relay. TURN is essential for phones on mobile data /
-  // carrier-grade NAT, where pure peer-to-peer (STUN only) usually fails — that
-  // was why voice didn't connect between devices. For production scale, replace
-  // these with your own coturn (e.g. on the DigitalOcean droplet).
-  static const Map<String, dynamic> _rtcConfig = {
+  // ICE config is fetched from the backend (GET /rtc/ice) so a TURN relay can be
+  // added server-side WITHOUT rebuilding the app. Cached for the session; falls
+  // back to STUN-only if the fetch fails. TURN is essential on mobile data /
+  // carrier-grade NAT (pure STUN fails there). The old hardcoded
+  // openrelay.metered.ca relay is DEAD — that's why voice stopped connecting.
+  Map<String, dynamic>? _rtcConfig;
+
+  static const Map<String, dynamic> _stunOnlyConfig = {
     'iceServers': [
       {'urls': 'stun:stun.l.google.com:19302'},
       {'urls': 'stun:stun1.l.google.com:19302'},
-      {
-        'urls': 'turn:openrelay.metered.ca:80',
-        'username': 'openrelayproject',
-        'credential': 'openrelayproject',
-      },
-      {
-        'urls': 'turn:openrelay.metered.ca:443',
-        'username': 'openrelayproject',
-        'credential': 'openrelayproject',
-      },
-      {
-        'urls': 'turn:openrelay.metered.ca:443?transport=tcp',
-        'username': 'openrelayproject',
-        'credential': 'openrelayproject',
-      },
     ],
     'sdpSemantics': 'unified-plan',
   };
+
+  Future<Map<String, dynamic>> _iceConfig() async {
+    if (_rtcConfig != null) return _rtcConfig!;
+    try {
+      final servers = await _api.getIceServers();
+      if (servers.isNotEmpty) {
+        _rtcConfig = {'iceServers': servers, 'sdpSemantics': 'unified-plan'};
+        return _rtcConfig!;
+      }
+    } catch (_) {/* fall back to STUN-only */}
+    _rtcConfig = _stunOnlyConfig;
+    return _rtcConfig!;
+  }
 
   String get _selfId => _socket.id ?? '';
 
@@ -145,6 +149,7 @@ class VoiceController extends StateNotifier<VoiceUiState> {
       await Helper.setSpeakerphoneOn(true);
     } catch (_) {/* not fatal */}
 
+    await _iceConfig(); // warm the ICE config before peers are built
     state = state.copyWith(inVoice: true, micOn: true, deafened: false, connecting: false);
     _reconcilePeers(); // connect to everyone already in voice
   }
@@ -299,7 +304,7 @@ class VoiceController extends StateNotifier<VoiceUiState> {
 
     RTCPeerConnection pc;
     try {
-      pc = await createPeerConnection(_rtcConfig);
+      pc = await createPeerConnection(await _iceConfig());
     } catch (_) {
       return null;
     }
@@ -421,5 +426,5 @@ class VoiceController extends StateNotifier<VoiceUiState> {
 /// mesh and releases the microphone.
 final voiceControllerProvider =
     StateNotifierProvider.autoDispose<VoiceController, VoiceUiState>(
-  (ref) => VoiceController(),
+  (ref) => VoiceController(ref.read(apiClientProvider)),
 );

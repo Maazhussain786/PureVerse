@@ -2,6 +2,7 @@ import { StreamPayload, StreamSource, Subtitle } from '../models/media';
 import { getAnimeDetails, resolveMalId } from '../services/animeService';
 import { searchTmdb, getTmdbDetails } from '../services/metadataService';
 import { fetchHiAnimeStream } from '../services/aniwatchService';
+import { getAnikotoEmbeds } from '../services/anikotoStreamService';
 
 type Source = StreamSource;
 
@@ -148,7 +149,36 @@ export async function resolveVidSrcStream(
       malId = await resolveMalId(searchTitle, altTitle);
     }
 
-    // ── PRIMARY (optional): HiAnime direct stream (real SUB + DUB + subtitles) ──
+    // ── PRIMARY: anikoto's own servers (megaplay.buzz) — real Japanese audio +
+    // English subtitles (SUB) and an English DUB, exactly like anikoto.cz
+    // (its VidPlay-1 / HD-1 / Vidstream-2 / VidCloud-1 / Kiwi-Stream menu lives
+    // inside this player). Listed FIRST so subbed anime is the default.
+    // Best-effort: if anikoto can't be resolved we fall back to the embeds below.
+    try {
+      const ak = await getAnikotoEmbeds(searchTitle, altTitle, malId, epNum);
+      if (ak?.sub) {
+        sources.push({
+          server: 'Anikoto · SUB',
+          quality: 'Auto',
+          url: ak.sub,
+          type: 'embed',
+          category: 'sub',
+        });
+      }
+      if (ak?.dub) {
+        sources.push({
+          server: 'Anikoto · DUB',
+          quality: 'Auto',
+          url: ak.dub,
+          type: 'embed',
+          category: 'dub',
+        });
+      }
+    } catch {
+      /* best-effort — fall back to the embeds below */
+    }
+
+    // ── HiAnime direct stream (optional, gated): real SUB + DUB + subtitles ──
     let direct = hiAnimeEnabled && searchTitle
         ? await fetchHiAnimeStream(searchTitle, epNum)
         : null;

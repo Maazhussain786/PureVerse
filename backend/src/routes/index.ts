@@ -22,6 +22,7 @@ import {
   postWatchProgress,
 } from '../controllers/mediaController';
 import { getAnimeStream } from '../controllers/animeStreamController';
+import { getIceServers } from '../controllers/rtcController';
 import {
   googleSignIn,
   guestSignIn,
@@ -120,6 +121,7 @@ router.delete('/user/notifications/:id', requireAuth, deleteNotification);
 router.delete('/user/notifications', requireAuth, clearNotifications);
 
 // ─── Watch party ──────────────────────────────────────────
+router.get('/rtc/ice', getIceServers); // WebRTC ICE config (STUN + optional TURN)
 router.get('/party/rooms', listPublicRooms);
 router.get('/party/rooms/:code', getRoomMeta);
 router.post('/party/invite', requireAuth, inviteToParty);

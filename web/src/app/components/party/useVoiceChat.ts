@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getSocket } from "../../lib/socket";
+import { API_BASE } from "../../lib/api";
 
 // Self-hosted WebRTC **mesh** voice for the watch party. Mirrors the Flutter
 // voice controller: each voice member peers directly with every other voice
@@ -10,16 +11,14 @@ import { getSocket } from "../../lib/socket";
 // just mutes those (the video keeps playing). Glare rule: the peer with the
 // lexicographically smaller socketId is the offerer.
 
-// STUN + a public TURN relay. TURN is what lets peers connect across
-// carrier/NAT boundaries (pure STUN fails on most mobile networks). Swap these
-// for your own coturn for production scale.
-const RTC_CONFIG: RTCConfiguration = {
+// ICE config is fetched from the backend (GET /rtc/ice) so a TURN relay can be
+// configured server-side WITHOUT redeploying the app. Falls back to STUN-only.
+// TURN is what lets peers connect across carrier/NAT boundaries (pure STUN fails
+// on most mobile networks); the old hardcoded openrelay.metered.ca relay is dead.
+const STUN_ONLY: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
-    { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
-    { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" },
   ],
 };
 
@@ -65,6 +64,24 @@ export function useVoiceChat(): VoiceChat {
   const voiceIds = useRef<Set<string>>(new Set()); // last-known in-voice socketIds
   const inVoiceRef = useRef(false);
   const deafenedRef = useRef(false);
+  const iceConfig = useRef<RTCConfiguration>(STUN_ONLY);
+
+  // Fetch ICE servers (STUN + any server-configured TURN) once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE}/rtc/ice`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const servers = j?.data?.iceServers;
+        if (!cancelled && Array.isArray(servers) && servers.length) {
+          iceConfig.current = { iceServers: servers };
+        }
+      })
+      .catch(() => {/* keep STUN-only */});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const selfId = () => getSocket().id || "";
   const signal = (to: string, data: VoiceSignal) =>
@@ -91,7 +108,7 @@ export function useVoiceChat(): VoiceChat {
       const stream = localStream.current;
       if (!stream) return null;
 
-      const pc = new RTCPeerConnection(RTC_CONFIG);
+      const pc = new RTCPeerConnection(iceConfig.current);
       const audio = document.createElement("audio");
       audio.autoplay = true;
       audio.muted = deafenedRef.current;

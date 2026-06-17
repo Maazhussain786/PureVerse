@@ -162,6 +162,18 @@ class ApiClient {
       _post('/user/searches', {'q': q});
   Future<void> clearRecentSearches() => _delete('/user/searches');
 
+  /// WebRTC ICE servers for party voice (STUN + any server-configured TURN).
+  /// Lets TURN be added on the backend without rebuilding the app.
+  Future<List<Map<String, dynamic>>> getIceServers() async {
+    final data = await _get('/rtc/ice');
+    final list = data is Map ? data['iceServers'] : null;
+    if (list is! List) return const [];
+    return list
+        .whereType<Map>()
+        .map((e) => e.cast<String, dynamic>())
+        .toList();
+  }
+
   // ─── Watch party (REST; live state flows over Socket.IO) ─
   /// Public room browser (GET /party/rooms). Returns raw summaries; the party
   /// layer maps them to PublicRoom so core stays decoupled from feature models.
