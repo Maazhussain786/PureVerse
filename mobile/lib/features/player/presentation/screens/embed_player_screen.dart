@@ -48,7 +48,6 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
   StreamPayload? _payload;
   Object? _error;
   int _selected = 0;
-  InAppWebViewController? _webController;
   bool _tipShown = false; // one-time "switch server" hint
   final Set<int> _failed = {}; // server indices that errored — skip on auto-failover
 
@@ -162,19 +161,36 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
     return Uri.tryParse(u);
   }
 
-  /// Build the WebView load request with a Referer. Anime embeds like
-  /// megaplay.buzz / megacloud refuse a direct top-level open and only play when
-  /// loaded with a Referer — which the website gets for free by embedding them in
-  /// an <iframe>, but the app loads them as the top document. Without this the
-  /// app shows MegaPlay's "can't find the file… copyright" page. Using the
-  /// embed's own origin as the Referer satisfies the check and is harmless for
-  /// the other providers (the same way the site's iframe referer does).
-  URLRequest _embedRequest(String url) {
-    final uri = WebUri(url);
-    return URLRequest(
-      url: uri,
-      headers: {'Referer': '${uri.scheme}://${uri.host}/'},
-    );
+  String _origin(String url) {
+    final u = WebUri(url);
+    return '${u.scheme}://${u.host}/';
+  }
+
+  /// Anime embeds like megaplay.buzz / megacloud refuse a direct top-level open
+  /// and only play when the request carries a Referer (otherwise MegaPlay shows
+  /// "can't find the file… copyright"). The website gets this for free by loading
+  /// them in an `iframe`; setting a Referer header on a WebView main-frame load
+  /// is unreliable on Android. So we reproduce the site exactly: a tiny local
+  /// page whose only content is a full-bleed `iframe` for the embed, served from
+  /// the embed's OWN origin (via the WebView baseUrl) with referrerpolicy=origin.
+  /// The iframe request then carries Referer of the embed origin, which the
+  /// provider accepts — same as the site's iframe.
+  String _wrapperHtml(String url) {
+    final src = url.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>html,body{margin:0;padding:0;height:100%;background:#000;overflow:hidden}
+iframe{position:fixed;inset:0;width:100%;height:100%;border:0}</style>
+</head>
+<body>
+<iframe src="$src" referrerpolicy="origin" allowfullscreen
+  allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe>
+</body>
+</html>''';
   }
 
   @override
@@ -216,7 +232,12 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
 
     return InAppWebView(
       key: ValueKey(url),
-      initialUrlRequest: _embedRequest(url),
+      initialData: InAppWebViewInitialData(
+        data: _wrapperHtml(url),
+        baseUrl: WebUri(_origin(url)),
+        mimeType: 'text/html',
+        encoding: 'utf-8',
+      ),
       initialSettings: InAppWebViewSettings(
         mediaPlaybackRequiresUserGesture: false,
         allowsInlineMediaPlayback: true,
@@ -226,7 +247,6 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
         transparentBackground: true,
         iframeAllowFullscreen: true,
       ),
-      onWebViewCreated: (c) => _webController = c,
       // Block popups / popunders entirely.
       onCreateWindow: (controller, action) async => false,
       // A dead/blocked provider fails on the top frame — auto-advance to the
@@ -335,13 +355,9 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
       icon: const Icon(Icons.dns_rounded, color: Colors.white),
       tooltip: 'Servers',
       initialValue: _selected,
-      onSelected: (i) {
-        setState(() => _selected = i);
-        final url = _currentUrl;
-        if (url != null) {
-          _webController?.loadUrl(urlRequest: _embedRequest(url));
-        }
-      },
+      // Changing _selected swaps the WebView's ValueKey, which rebuilds it with
+      // the new embed's iframe wrapper.
+      onSelected: (i) => setState(() => _selected = i),
       itemBuilder: (_) => [
         for (int i = 0; i < sources.length; i++)
           PopupMenuItem<int>(
