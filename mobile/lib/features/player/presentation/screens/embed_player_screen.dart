@@ -162,6 +162,21 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
     return Uri.tryParse(u);
   }
 
+  /// Build the WebView load request with a Referer. Anime embeds like
+  /// megaplay.buzz / megacloud refuse a direct top-level open and only play when
+  /// loaded with a Referer — which the website gets for free by embedding them in
+  /// an <iframe>, but the app loads them as the top document. Without this the
+  /// app shows MegaPlay's "can't find the file… copyright" page. Using the
+  /// embed's own origin as the Referer satisfies the check and is harmless for
+  /// the other providers (the same way the site's iframe referer does).
+  URLRequest _embedRequest(String url) {
+    final uri = WebUri(url);
+    return URLRequest(
+      url: uri,
+      headers: {'Referer': '${uri.scheme}://${uri.host}/'},
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -201,7 +216,7 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
 
     return InAppWebView(
       key: ValueKey(url),
-      initialUrlRequest: URLRequest(url: WebUri(url)),
+      initialUrlRequest: _embedRequest(url),
       initialSettings: InAppWebViewSettings(
         mediaPlaybackRequiresUserGesture: false,
         allowsInlineMediaPlayback: true,
@@ -324,7 +339,7 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
         setState(() => _selected = i);
         final url = _currentUrl;
         if (url != null) {
-          _webController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+          _webController?.loadUrl(urlRequest: _embedRequest(url));
         }
       },
       itemBuilder: (_) => [
