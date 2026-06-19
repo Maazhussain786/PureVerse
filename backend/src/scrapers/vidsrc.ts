@@ -149,16 +149,16 @@ export async function resolveVidSrcStream(
       malId = await resolveMalId(searchTitle, altTitle);
     }
 
-    // ── PRIMARY: anikoto's own servers (megaplay.buzz) — real Japanese audio +
-    // English subtitles (SUB) and an English DUB, exactly like anikoto.cz
-    // (its VidPlay-1 / HD-1 / Vidstream-2 / VidCloud-1 / Kiwi-Stream menu lives
-    // inside this player). Listed FIRST so subbed anime is the default.
-    // Best-effort: if anikoto can't be resolved we fall back to the embeds below.
+    // ── PRIMARY: PureVerse's own servers (megaplay.buzz) — real Japanese audio +
+    // English subtitles (SUB) and an English DUB. The provider is branded
+    // "PureVerse" in the UI (its VidPlay-1 / HD-1 / Vidstream-2 / VidCloud-1 /
+    // Kiwi-Stream menu lives inside this player). Listed FIRST so subbed anime
+    // is the default. Best-effort: if it can't be resolved we fall back below.
     try {
       const ak = await getAnikotoEmbeds(searchTitle, altTitle, malId, epNum);
       if (ak?.sub) {
         sources.push({
-          server: 'Anikoto · SUB',
+          server: 'PureVerse · SUB',
           quality: 'Auto',
           url: ak.sub,
           type: 'embed',
@@ -167,7 +167,7 @@ export async function resolveVidSrcStream(
       }
       if (ak?.dub) {
         sources.push({
-          server: 'Anikoto · DUB',
+          server: 'PureVerse · DUB',
           quality: 'Auto',
           url: ak.dub,
           type: 'embed',

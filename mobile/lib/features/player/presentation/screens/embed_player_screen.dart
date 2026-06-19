@@ -78,14 +78,26 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
       if (!mounted) return;
       setState(() {
         _payload = payload;
-        // Prefer an embed source (hybrid phase plays embeds, not direct yet).
-        final i = payload.sources.indexWhere((s) => s.isEmbed);
-        _selected = i >= 0 ? i : 0;
+        _selected = _defaultSourceIndex(payload.sources);
       });
       _maybeShowSwitchTip();
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
+  }
+
+  /// Which server to start on. Movies & TV default to the **VidFast** web
+  /// player (most reliable + fastest start on mobile); anime keeps its own
+  /// provider order (PureVerse SUB first). Falls back to the first embed.
+  int _defaultSourceIndex(List<StreamSource> sources) {
+    if (sources.isEmpty) return 0;
+    if (widget.mediaType == 'movie' || widget.mediaType == 'tv') {
+      final vidfast = sources.indexWhere(
+          (s) => s.server.toLowerCase().contains('vidfast'));
+      if (vidfast >= 0) return vidfast;
+    }
+    final embed = sources.indexWhere((s) => s.isEmbed);
+    return embed >= 0 ? embed : 0;
   }
 
   /// One-time hint pointing at the server switcher in the top bar.

@@ -74,6 +74,13 @@ function WatchPageInner() {
   const [partyOpen, setPartyOpen] = useState(false);
   const [shared, setShared] = useState(false);
   const [tipOpen, setTipOpen] = useState(true);
+  // Scroll-guard: a cross-origin player iframe swallows mouse-wheel events, so
+  // the page won't scroll while the cursor is over it. We arm a transparent
+  // overlay (which lets the wheel scroll the page) only AFTER the cursor has
+  // left the player once — so the very first click still lands straight on the
+  // provider's play button (no extra click, no muted-autoplay), and afterwards
+  // hovering the player scrolls the page; one click re-enters control mode.
+  const [scrollGuard, setScrollGuard] = useState(false);
   const lastProgressSync = useRef(0);
 
   // ─── Playback tip (dismissible, remembered) ───
@@ -116,6 +123,7 @@ function WatchPageInner() {
       setLoading(true);
       setError(false);
       setStreamData(null);
+      setScrollGuard(false); // fresh episode/title → start in control mode
       try {
         const res = await fetch(
           `${API_BASE}/media/stream/${type}/${id}?season=${season}&episode=${episode}`
@@ -156,6 +164,7 @@ function WatchPageInner() {
 
   const selectServer = useCallback(
     (idx: number) => {
+      setScrollGuard(false); // new source → start in control mode
       setActiveSourceIdx(idx);
       const server = streamData?.sources[idx]?.server;
       if (server) {
@@ -170,6 +179,7 @@ function WatchPageInner() {
   const tryNextServer = useCallback(() => {
     const count = streamData?.sources?.length ?? 0;
     if (count === 0) return;
+    setScrollGuard(false); // new source → start in control mode
     setActiveSourceIdx((idx) => (idx + 1) % count);
   }, [streamData]);
 
@@ -340,8 +350,24 @@ function WatchPageInner() {
 
   const activeSource = streamData?.sources?.[activeSourceIdx];
 
+  // Warm up the TCP/TLS connection to the active provider so the embed's first
+  // request is faster — shaves a noticeable chunk off perceived load time.
+  let activeOrigin: string | null = null;
+  try {
+    if (activeSource?.url) activeOrigin = new URL(activeSource.url).origin;
+  } catch {
+    /* malformed url — skip preconnect */
+  }
+
   return (
     <main className="min-h-screen bg-[var(--bg-primary)]" style={{ paddingTop: '80px' }}>
+      {/* Preconnect to streaming providers for a faster first frame. The embed
+          loads as a credentialed document, so these are plain (non-CORS)
+          preconnects — the warmed connection is then reused by the iframe. */}
+      <link rel="preconnect" href="https://vidlink.pro" />
+      <link rel="preconnect" href="https://vidfast.pro" />
+      <link rel="dns-prefetch" href="https://megaplay.buzz" />
+      {activeOrigin && <link rel="preconnect" href={activeOrigin} />}
       <div className="watch-layout-container px-3 md:px-6 pt-3 md:pt-5 pb-12">
         {/* ─── Theater: player + episode rail ─── */}
         <div className={`watch-theater-layout ${isSeries ? "is-series" : ""}`}>
@@ -378,7 +404,10 @@ function WatchPageInner() {
                 </button>
               </div>
             )}
-            <div className="relative w-full aspect-video rounded-2xl bg-black ring-1 ring-white/[0.08] shadow-[0_8px_50px_rgba(0,0,0,0.85)]">
+            <div
+              className="relative w-full aspect-video rounded-2xl bg-black ring-1 ring-white/[0.08] shadow-[0_8px_50px_rgba(0,0,0,0.85)]"
+              onMouseLeave={() => activeSource && setScrollGuard(true)}
+            >
               {loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black rounded-2xl">
                   <div className="flex flex-col items-center gap-4">
@@ -426,7 +455,7 @@ function WatchPageInner() {
                     <button
                       onClick={tryNextServer}
                       title="Video blank or won't play? Jump to the next server (S)"
-                      className="absolute top-3 right-3 z-10 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-black/60 backdrop-blur-md border border-[var(--accent-primary)]/40 hover:bg-[var(--accent-primary)] hover:text-black transition-all duration-300 shadow-[0_0_15px_var(--accent-glow)]"
+                      className="absolute top-3 right-3 z-20 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-black/60 backdrop-blur-md border border-[var(--accent-primary)]/40 hover:bg-[var(--accent-primary)] hover:text-black transition-all duration-300 shadow-[0_0_15px_var(--accent-glow)]"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M3 2v6h6" />
@@ -435,6 +464,24 @@ function WatchPageInner() {
                         <path d="M3 12a9 9 0 0 0 15 6.7l3-2.7" />
                       </svg>
                       Switch Server
+                    </button>
+                  )}
+
+                  {/* Scroll-guard overlay: armed once the cursor has left the
+                      player, it lets the mouse wheel scroll the page instead of
+                      being swallowed by the iframe. A single click hands control
+                      back to the player. Transparent so the video stays visible. */}
+                  {scrollGuard && (
+                    <button
+                      type="button"
+                      onClick={() => setScrollGuard(false)}
+                      aria-label="Click to control the player"
+                      className="group absolute inset-0 z-10 flex items-end justify-center bg-transparent rounded-2xl cursor-pointer"
+                    >
+                      <span className="pointer-events-none mb-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-[11px] font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                        Click to control · scroll to browse
+                      </span>
                     </button>
                   )}
                 </>
