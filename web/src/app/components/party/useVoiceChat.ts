@@ -180,34 +180,45 @@ export function useVoiceChat(): VoiceChat {
 
     const onSignal = async ({ from, data }: { from: string; data: VoiceSignal }) => {
       if (!from || !data) return;
-      if (data.kind === "offer") {
-        if (!inVoiceRef.current) return;
-        const peer = createPeer(from);
-        if (!peer) return;
-        await peer.pc.setRemoteDescription({ type: data.type!, sdp: data.sdp });
-        peer.remoteDescSet = true;
-        for (const c of peer.pendingIce) await peer.pc.addIceCandidate(c);
-        peer.pendingIce = [];
-        const answer = await peer.pc.createAnswer();
-        await peer.pc.setLocalDescription(answer);
-        signal(from, { kind: "answer", sdp: answer.sdp, type: answer.type });
-      } else if (data.kind === "answer") {
-        const peer = peers.current.get(from);
-        if (!peer) return;
-        await peer.pc.setRemoteDescription({ type: data.type!, sdp: data.sdp });
-        peer.remoteDescSet = true;
-        for (const c of peer.pendingIce) await peer.pc.addIceCandidate(c);
-        peer.pendingIce = [];
-      } else if (data.kind === "ice") {
-        const peer = peers.current.get(from);
-        if (!peer) return;
-        const cand: RTCIceCandidateInit = {
-          candidate: data.candidate,
-          sdpMid: data.sdpMid ?? undefined,
-          sdpMLineIndex: data.sdpMLineIndex ?? undefined,
-        };
-        if (peer.remoteDescSet) await peer.pc.addIceCandidate(cand);
-        else peer.pendingIce.push(cand);
+      // Every SDP/ICE step is wrapped: a failed/late negotiation drops just that
+      // one peer instead of throwing into the connection and wedging voice. The
+      // next voice-state reconcile re-establishes it cleanly.
+      try {
+        if (data.kind === "offer") {
+          if (!inVoiceRef.current) return;
+          // Ignore a duplicate/renegotiation offer for a peer we already set up —
+          // re-applying a remote offer is a classic glare crash.
+          const already = peers.current.get(from);
+          if (already && already.remoteDescSet) return;
+          const peer = createPeer(from);
+          if (!peer) return;
+          await peer.pc.setRemoteDescription({ type: data.type!, sdp: data.sdp });
+          peer.remoteDescSet = true;
+          for (const c of peer.pendingIce) await peer.pc.addIceCandidate(c);
+          peer.pendingIce = [];
+          const answer = await peer.pc.createAnswer();
+          await peer.pc.setLocalDescription(answer);
+          signal(from, { kind: "answer", sdp: answer.sdp, type: answer.type });
+        } else if (data.kind === "answer") {
+          const peer = peers.current.get(from);
+          if (!peer || peer.remoteDescSet) return; // ignore stray/duplicate answer
+          await peer.pc.setRemoteDescription({ type: data.type!, sdp: data.sdp });
+          peer.remoteDescSet = true;
+          for (const c of peer.pendingIce) await peer.pc.addIceCandidate(c);
+          peer.pendingIce = [];
+        } else if (data.kind === "ice") {
+          const peer = peers.current.get(from);
+          if (!peer) return;
+          const cand: RTCIceCandidateInit = {
+            candidate: data.candidate,
+            sdpMid: data.sdpMid ?? undefined,
+            sdpMLineIndex: data.sdpMLineIndex ?? undefined,
+          };
+          if (peer.remoteDescSet) await peer.pc.addIceCandidate(cand);
+          else peer.pendingIce.push(cand);
+        }
+      } catch {
+        closePeer(from);
       }
     };
 
@@ -217,7 +228,7 @@ export function useVoiceChat(): VoiceChat {
       socket.off("party:voice-state", onVoiceState);
       socket.off("party:rtc-signal", onSignal);
     };
-  }, [createPeer, reconcile]);
+  }, [createPeer, reconcile, closePeer]);
 
   // Tear down on unmount (leaving the room).
   useEffect(() => {

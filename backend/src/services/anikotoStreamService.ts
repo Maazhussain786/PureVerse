@@ -93,11 +93,14 @@ async function resolveSeriesId(
       negCache.set(key, true);
       return null;
     }
+    // Scan a wider candidate list: popular long-running shows (Naruto, One
+    // Piece, Bleach…) return many same-name entries/cours, so the exact MAL
+    // match is often past the first few results.
     const slugs = [
       ...new Set(
         [...res.data.matchAll(/\/watch\/([a-z0-9-]+)/gi)].map((m) => m[1])
       ),
-    ].slice(0, 4);
+    ].slice(0, 10);
 
     let firstId: number | null = null;
     for (const slug of slugs) {

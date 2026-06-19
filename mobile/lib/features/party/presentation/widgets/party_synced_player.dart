@@ -313,6 +313,27 @@ class _PartySyncedPlayerState extends ConsumerState<PartySyncedPlayer> {
     _seekTo(target.toDouble());
   }
 
+  /// Jump THIS viewer's player straight to the party's live position — the
+  /// manual "catch up with the host" escape hatch so a buffering viewer doesn't
+  /// have to wait (and doesn't make everyone else wait). Local-only: it never
+  /// touches the shared clock, so anyone can use it regardless of control rights.
+  void _syncToLive() {
+    final st = ref.read(partyControllerProvider);
+    final pb = st.room?.playback;
+    if (pb == null || _phase != _Phase.playing) return;
+    _player.seek(Duration(milliseconds: (pb.livePosition * 1000).round()));
+    if (pb.isPlaying && !st.holding) {
+      _player.play();
+    }
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(
+        content: Text('Synced to the host'),
+        duration: Duration(seconds: 1),
+      ));
+    _restartHideTimer();
+  }
+
   void _lockToast() {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -549,6 +570,10 @@ class _PartySyncedPlayerState extends ConsumerState<PartySyncedPlayer> {
                   ),
                 ),
                 const Spacer(),
+                PlayerIconButton(
+                    icon: Icons.sync_rounded,
+                    tooltip: 'Sync to live',
+                    onTap: _syncToLive),
                 if (widget.fullscreen && widget.onToggleChat != null)
                   PlayerIconButton(
                       icon: widget.chatOpen
@@ -686,14 +711,30 @@ class _PartySyncedPlayerState extends ConsumerState<PartySyncedPlayer> {
               Text('Waiting for $who to catch up…',
                   style: const TextStyle(
                       color: Colors.white, fontWeight: FontWeight.w600)),
-              if (st.isHost) ...[
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => _ctrl.emitPlayback('play'),
-                  child: const Text('Skip wait',
-                      style: TextStyle(color: AppColors.teal)),
-                ),
-              ],
+              const SizedBox(height: 4),
+              const Text('Auto-resumes shortly if they keep buffering.',
+                  style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Anyone can drop the wait for themselves and jump to live.
+                  TextButton.icon(
+                    onPressed: _syncToLive,
+                    icon: const Icon(Icons.sync_rounded,
+                        color: AppColors.teal, size: 18),
+                    label: const Text('Sync to live',
+                        style: TextStyle(color: AppColors.teal)),
+                  ),
+                  // The host can also force the whole party to resume now.
+                  if (st.isHost)
+                    TextButton(
+                      onPressed: () => _ctrl.emitPlayback('play'),
+                      child: const Text('Skip wait for all',
+                          style: TextStyle(color: Colors.white)),
+                    ),
+                ],
+              ),
             ],
           ),
         ),

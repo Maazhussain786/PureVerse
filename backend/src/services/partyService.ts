@@ -68,6 +68,7 @@ export interface PartyRoom {
   emptySince: number | null;
   autoWait: boolean; // auto-pause the party while a member buffers / lags (host toggle)
   holding: boolean; // transient: party is currently held waiting for stragglers
+  holdSince: number | null; // Date.now() the current hold began (for the max-hold safety valve)
 }
 
 const rooms = new Map<string, PartyRoom>();
@@ -115,6 +116,7 @@ export function createRoom(opts: {
     emptySince: null,
     autoWait: opts.autoWait !== false, // default on
     holding: false,
+    holdSince: null,
   };
   room.members.set(opts.host.socketId, newMember({ ...opts.host, isHost: true }));
   rooms.set(room.code, room);
@@ -228,8 +230,17 @@ export function serializeRoom(room: PartyRoom) {
 
 // ─── Voice + buffer-aware sync helpers ────────────────────
 export const VOICE_CAP = 10; // max peers in the WebRTC mesh (SFU is the scale path)
-export const LAG_HOLD_SEC = 2.5; // a member this far behind the clock triggers a hold
-export const READY_TOL_SEC = 1.2; // everyone within this of target → safe to resume
+export const LAG_HOLD_SEC = 3.5; // a member this far behind the clock triggers a hold
+export const READY_TOL_SEC = 2.0; // everyone within this of target → safe to resume
+// Safety valve: never freeze the party longer than this waiting for one slow
+// member. After it, the party auto-resumes and the straggler catches up on its
+// own (or taps "Sync to live"). This is what stops the endless "waiting for X".
+export const MAX_HOLD_MS = 12_000;
+
+/// Snapshot of every live room (for the periodic max-hold sweep).
+export function allRooms(): PartyRoom[] {
+  return Array.from(rooms.values());
+}
 
 export function voiceMemberCount(room: PartyRoom): number {
   let n = 0;

@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import {
   PartyRoom,
   addChatMessage,
+  allRooms,
   anyoneStalled,
   bufferingStatus,
   createRoom,
@@ -10,6 +11,7 @@ import {
   everyoneReady,
   getRoom,
   hashPassword,
+  MAX_HOLD_MS,
   memberBanKey,
   newMember,
   serializeRoom,
@@ -81,6 +83,36 @@ export default function setupSockets(io: Server) {
   // Room garbage collection
   setInterval(() => sweepEmptyRooms(), 60 * 1000).unref();
 
+  // ─── Auto-wait safety valve ───────────────────────────────
+  // Never freeze the party indefinitely: if a hold has run past MAX_HOLD_MS the
+  // straggler is clearly struggling, so resume everyone else and let them catch
+  // up on their own (or via the "Sync to live" button). This is the core fix for
+  // the party getting stuck on "waiting for X to catch up".
+  setInterval(() => {
+    const now = Date.now();
+    for (const room of allRooms()) {
+      if (!room.holding || !room.holdSince) continue;
+      if (now - room.holdSince <= MAX_HOLD_MS) continue;
+      room.holding = false;
+      room.holdSince = null;
+      room.playback = {
+        isPlaying: true,
+        positionSec: room.playback.positionSec,
+        updatedAt: now,
+      };
+      io.to(room.code).emit('party:resume', {
+        positionSec: room.playback.positionSec,
+        timedOut: true,
+      });
+      io.to(room.code).emit('party:buffering-status', {
+        holding: false,
+        autoWait: room.autoWait,
+        members: bufferingStatus(room),
+      });
+      systemMessage(room, 'Resumed — gave up waiting for a slow connection');
+    }
+  }, 2000).unref();
+
   const broadcastState = (room: PartyRoom) => {
     io.to(room.code).emit('party:state', serializeRoom(room));
   };
@@ -124,6 +156,7 @@ export default function setupSockets(io: Server) {
       // Only meaningful to hold while the party intends to be playing.
       if (room.playback.isPlaying && anyoneStalled(room)) {
         room.holding = true;
+        room.holdSince = Date.now();
         // Freeze the virtual clock at the current live position.
         room.playback = {
           isPlaying: false,
@@ -137,6 +170,7 @@ export default function setupSockets(io: Server) {
       }
     } else if (everyoneReady(room)) {
       room.holding = false;
+      room.holdSince = null;
       room.playback = {
         isPlaying: true,
         positionSec: room.playback.positionSec,
@@ -344,6 +378,7 @@ export default function setupSockets(io: Server) {
       // An explicit transport action (incl. the host's "Skip wait") overrides an
       // in-progress auto-wait hold.
       room.holding = false;
+      room.holdSince = null;
 
       if (action === 'play') {
         room.playback = { isPlaying: true, positionSec: currentPosition(room), updatedAt: now };
@@ -409,6 +444,7 @@ export default function setupSockets(io: Server) {
       room.playback = { isPlaying: false, positionSec: 0, updatedAt: Date.now() };
       // Fresh source → clear stale buffering/hold so it doesn't re-trigger a wait.
       room.holding = false;
+      room.holdSince = null;
       for (const m of room.members.values()) {
         m.buffering = false;
         m.reportedPos = 0;
@@ -454,6 +490,7 @@ export default function setupSockets(io: Server) {
         // If turning autoWait off while held, release the party.
         if (!room.autoWait && room.holding) {
           room.holding = false;
+          room.holdSince = null;
           room.playback = { isPlaying: true, positionSec: currentPosition(room), updatedAt: Date.now() };
           io.to(room.code).emit('party:resume', { positionSec: room.playback.positionSec });
         }
