@@ -59,22 +59,22 @@ export default function ServerSelector({
         key={`${source.url}-${idx}`}
         onClick={() => !locked && onSelect(idx)}
         disabled={locked}
-        className={`group relative flex items-center gap-2 px-4 ${compact ? "py-1.5" : "py-2.5"} rounded-xl text-xs font-semibold transition-all duration-200 ${
+        className={`group relative flex items-center rounded-xl text-[13px] font-semibold transition-all duration-200 ${
           active
             ? "bg-[var(--accent-primary)] text-black shadow-[0_0_16px_var(--accent-glow)]"
             : "bg-white/[0.04] border border-white/10 text-[var(--text-secondary)] hover:text-white hover:border-[var(--accent-primary)]/40"
         } ${locked && !active ? "opacity-40 cursor-not-allowed" : ""}`}
-        style={{ padding: compact ? "6px 16px" : "10px 16px", gap: "8px" }}
+        style={{ padding: compact ? "8px 16px" : "11px 18px", gap: "9px" }}
       >
-        <span className={`w-1.5 h-1.5 rounded-full ${active ? "bg-black animate-pulse" : "bg-[var(--accent-primary)]/60"}`} />
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? "bg-black animate-pulse" : "bg-[var(--accent-primary)]/60"}`} />
         {source.server || `Server ${idx + 1}`}
         {source.quality && source.quality !== "Auto" && (
-          <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${active ? "bg-black/15" : "bg-white/10"}`}>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${active ? "bg-black/15" : "bg-white/10"}`}>
             {source.quality}
           </span>
         )}
         {active && (
-          <span className="text-[9px] font-black uppercase tracking-wider">● Live</span>
+          <span className="text-[10px] font-black uppercase tracking-wider">● Live</span>
         )}
       </button>
     );
@@ -85,8 +85,8 @@ export default function ServerSelector({
       {grouped ? (
         GROUPS.filter((g) => grouped.has(g.key)).map((group) => (
           <div key={group.key}>
-            <div className="flex items-center gap-2 mb-2" style={{ gap: "8px", marginBottom: "8px" }}>
-              <span className={`text-[10px] font-black tracking-widest px-2 py-0.5 rounded ${
+            <div className="flex items-center gap-2 mb-2" style={{ gap: "10px", marginBottom: "10px" }}>
+              <span className={`text-[11px] font-black tracking-widest px-2.5 py-1 rounded ${
                 group.key === "dub"
                   ? "bg-[var(--accent-teal-subtle)] text-[var(--accent-teal)]"
                   : group.key === "sub"
@@ -95,15 +95,15 @@ export default function ServerSelector({
               }`}>
                 {group.label}
               </span>
-              {!compact && <span className="text-[10px] text-[var(--text-muted)]">{group.hint}</span>}
+              {!compact && <span className="text-[11px] text-[var(--text-muted)]">{group.hint}</span>}
             </div>
-            <div className="flex flex-wrap gap-2" style={{ gap: "8px" }}>
+            <div className="flex flex-wrap" style={{ gap: "10px" }}>
               {grouped.get(group.key)!.map(({ idx, source }) => chip(idx, source))}
             </div>
           </div>
         ))
       ) : (
-        <div className="flex flex-wrap gap-2" style={{ gap: "8px" }}>
+        <div className="flex flex-wrap" style={{ gap: "10px" }}>
           {sources.map((source, idx) => chip(idx, source))}
         </div>
       )}

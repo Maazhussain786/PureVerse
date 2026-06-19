@@ -198,7 +198,7 @@ export default function EpisodePanel({
 
                   {/* Info */}
                   <div className="flex-1 min-w-0 py-0.5">
-                    <p className="text-[10px] font-bold text-[var(--text-muted)] tracking-wide">
+                    <p className="text-[11px] font-bold text-[var(--text-muted)] tracking-wide">
                       EPISODE {ep.episodeNumber}
                       {ep.runtime ? ` · ${ep.runtime}m` : ""}
                       {progress >= 95 && (
