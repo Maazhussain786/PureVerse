@@ -7,7 +7,7 @@ import { useUserState } from "../../../components/UserStateContext";
 import { useAuth } from "../../../components/AuthContext";
 import MediaRow from "../../../components/MediaRow";
 import ServerSelector, { StreamSource } from "../../../components/watch/ServerSelector";
-import EpisodePanel, { EpisodeInfo } from "../../../components/watch/EpisodePanel";
+import { EpisodeInfo } from "../../../components/watch/EpisodePanel";
 import CreatePartyModal from "../../../components/party/CreatePartyModal";
 import { API_BASE } from "../../../lib/api";
 
@@ -69,7 +69,6 @@ function WatchPageInner() {
   const [error, setError] = useState(false);
   const [details, setDetails] = useState<MediaDetails | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [seasonEpisodes, setSeasonEpisodes] = useState<EpisodeInfo[]>([]);
   const [autoplayNext, setAutoplayNext] = useState(true);
   const [partyOpen, setPartyOpen] = useState(false);
   const [shared, setShared] = useState(false);
@@ -200,7 +199,7 @@ function WatchPageInner() {
   }, [type, id]);
 
   // ─── Episode navigation ───
-  const episodeList = seasonEpisodes.length > 0 ? seasonEpisodes : details?.episodes || [];
+  const episodeList = details?.episodes || [];
   const currentEpInfo = episodeList.find((e) => e.episodeNumber === episode);
 
   const goToEpisode = useCallback(
@@ -369,8 +368,8 @@ function WatchPageInner() {
       <link rel="dns-prefetch" href="https://megaplay.buzz" />
       {activeOrigin && <link rel="preconnect" href={activeOrigin} />}
       <div className="watch-layout-container px-3 md:px-6 pt-3 md:pt-5 pb-12">
-        {/* ─── Theater: player + episode rail ─── */}
-        <div className={`watch-theater-layout ${isSeries ? "is-series" : ""}`}>
+        {/* ─── Theater: full-width player (episodes live inside the player now) ─── */}
+        <div className="watch-theater-layout">
           {/* Player column */}
           <div className="flex-1 min-w-0">
             {/* ─── Pre-play tip: switch servers on issues ─── */}
@@ -665,24 +664,6 @@ function WatchPageInner() {
               </div>
             )}
           </div>
-
-          {/* ─── Episode rail (desktop) ─── */}
-          {isSeries && details && (details.totalSeasons || 0) > 0 && (
-            <aside className="watch-episode-rail">
-              <div className="glass-panel rounded-2xl overflow-hidden h-full flex flex-col">
-                <EpisodePanel
-                  mediaId={details.id}
-                  totalSeasons={details.totalSeasons || 1}
-                  season={season}
-                  episode={episode}
-                  initialEpisodes={details.episodes}
-                  onSelect={goToEpisode}
-                  onEpisodesLoaded={setSeasonEpisodes}
-                  className="h-full"
-                />
-              </div>
-            </aside>
-          )}
         </div>
 
         {/* ─── More Like This ─── */}

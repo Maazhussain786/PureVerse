@@ -55,9 +55,7 @@ export default function EpisodeBrowser({
   const [episodes, setEpisodes] = useState<Episode[]>(initialEpisodes || []);
   const [loading, setLoading] = useState(false);
   const tabsRef = useRef<HTMLDivElement>(null);
-  const stripRef = useRef<HTMLDivElement>(null);
   useDragScroll(tabsRef);
-  useDragScroll(stripRef);
 
   const rawId = mediaId.replace("tmdb_", "").replace("mal_", "");
 
@@ -141,9 +139,10 @@ export default function EpisodeBrowser({
         <LoadingSpinner />
       )}
 
-      {/* Episode cards */}
+      {/* Episode list — a roomy vertical list (thumbnail + title + synopsis),
+          Netflix/Cineby style: easy to scan, readable text, big tap targets. */}
       {!loading && episodes.length > 0 && (
-        <div ref={stripRef} className="drag-scroll flex gap-4 overflow-x-auto pb-6 hide-scrollbar snap-x snap-mandatory">
+        <div className="flex flex-col gap-3">
           {episodes.map((ep) => {
             const seasonNum = ep.seasonNumber || season;
             const progress = progressFor(ep.episodeNumber, seasonNum);
@@ -155,71 +154,76 @@ export default function EpisodeBrowser({
               <Link
                 key={ep.id}
                 href={href}
-                className="group relative flex-none w-72 md:w-80 aspect-video rounded-xl bg-[var(--bg-card)] overflow-hidden snap-start hover:scale-[1.02] transition-transform duration-300 ring-1 ring-white/10 hover:ring-white/30 shadow-lg"
+                className="group flex items-stretch gap-4 md:gap-5 p-2.5 md:p-3 rounded-2xl bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-white/[0.06] hover:ring-[var(--accent-primary)]/40 transition-all duration-200"
               >
                 {/* Thumbnail */}
-                {ep.thumbnailUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={proxyImage(ep.thumbnailUrl)}
-                    alt={ep.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="opacity-30">
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
-                  </div>
-                )}
-                
-                {/* Gradient overlay for text */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-black/5" />
+                <div className="relative flex-none w-[136px] sm:w-[180px] md:w-[230px] aspect-video rounded-xl overflow-hidden bg-[var(--bg-elevated)]">
+                  {ep.thumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={proxyImage(ep.thumbnailUrl)}
+                      alt={ep.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="opacity-30">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                      </svg>
+                    </div>
+                  )}
 
-                {/* Episode number badge */}
-                <div className="absolute top-3 left-3 px-2 py-1 rounded-md bg-[var(--accent-primary)] text-black text-[11px] font-extrabold leading-none shadow-[0_0_12px_var(--accent-glow)]">
-                  E{ep.episodeNumber}
+                  {/* Play overlay on hover */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <span className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-[var(--accent-primary)] flex items-center justify-center text-black scale-90 group-hover:scale-100 transition-transform shadow-[0_0_20px_var(--accent-glow)]">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5">
+                        <polygon points="6 4 20 12 6 20 6 4" />
+                      </svg>
+                    </span>
+                  </div>
+
+                  {/* Resume progress */}
+                  {inProgress && (
+                    <div className="absolute bottom-0 inset-x-0 h-1 bg-black/50">
+                      <div className="h-full bg-[var(--accent-primary)] shadow-[0_0_8px_var(--accent-glow)]" style={{ width: `${progress}%` }} />
+                    </div>
+                  )}
                 </div>
 
-                {/* Watched check */}
-                {watched && (
-                  <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[var(--accent-primary)] flex items-center justify-center shadow-[0_0_12px_var(--accent-glow)]">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 6 9 17l-5-5" />
-                    </svg>
+                {/* Info */}
+                <div className="flex-1 min-w-0 flex flex-col justify-center py-1 pr-1.5">
+                  <div className="flex items-center gap-2.5 mb-1.5">
+                    <span className="text-lg md:text-2xl font-extrabold text-[var(--accent-primary)] leading-none tabular-nums">
+                      {ep.episodeNumber}
+                    </span>
+                    <h3 className="flex-1 min-w-0 text-[15px] md:text-[17px] font-bold text-white truncate">
+                      {ep.title || `Episode ${ep.episodeNumber}`}
+                    </h3>
+                    {watched && (
+                      <span className="flex-none flex items-center gap-1 text-[11px] font-bold text-[var(--accent-primary)]">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                        <span className="hidden sm:inline">Watched</span>
+                      </span>
+                    )}
+                    {inProgress && (
+                      <span className="flex-none text-[12px] font-bold text-[var(--accent-primary)]">{Math.round(progress)}%</span>
+                    )}
                   </div>
-                )}
 
-                {/* Play overlay */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/30">
-                  <div className="w-14 h-14 rounded-full bg-[var(--accent-primary)] flex items-center justify-center text-black scale-90 group-hover:scale-100 transition-transform shadow-[0_0_24px_var(--accent-glow)]">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5">
-                      <polygon points="6 4 20 12 6 20 6 4" />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Episode Info (bottom) */}
-                <div className="absolute bottom-3 left-4 right-4">
-                  <div className="flex items-center gap-2 mb-1 text-[11px] font-medium text-white/70">
-                    {ep.runtime ? <span>{ep.runtime}m</span> : null}
-                    {ep.runtime && ep.airDate ? <span className="w-1 h-1 rounded-full bg-white/40" /> : null}
+                  <div className="flex items-center gap-2 mb-1.5 text-[12px] md:text-[13px] font-medium text-[var(--text-muted)]">
+                    {ep.runtime ? <span>{ep.runtime} min</span> : null}
+                    {ep.runtime && ep.airDate ? <span className="w-1 h-1 rounded-full bg-[var(--text-muted)]" /> : null}
                     {ep.airDate ? <span>{formatAirDate(ep.airDate)}</span> : null}
-                    {inProgress ? <span className="ml-auto text-[var(--accent-primary)] font-bold">{Math.round(progress)}%</span> : null}
                   </div>
-                  <h3 className="text-[15px] font-bold text-white truncate drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]">
-                    {ep.title}
-                  </h3>
-                </div>
 
-                {/* Progress bar */}
-                {inProgress && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/15">
-                    <div className="h-full bg-[var(--accent-primary)] shadow-[0_0_8px_var(--accent-glow)]" style={{ width: `${progress}%` }} />
-                  </div>
-                )}
+                  {ep.synopsis ? (
+                    <p className="text-[13px] md:text-sm leading-relaxed text-[var(--text-secondary)] line-clamp-2">
+                      {ep.synopsis}
+                    </p>
+                  ) : null}
+                </div>
               </Link>
             );
           })}
