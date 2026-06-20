@@ -29,9 +29,16 @@ export async function resolveVidSrcStream(
 
   if (type === 'movie') {
     // ── MOVIE servers (film/TV catalogue providers — kept separate from anime) ──
-    // VidLink is the DEFAULT web player (first); the rest are Switch-Server
-    // fallbacks the client auto-advances to if one is blocked or has no source.
+    // Videasy is the DEFAULT web player (first) — clean Netflix-style UI, brand
+    // emerald accent. The rest are Switch-Server fallbacks the user can pick if
+    // Videasy is blocked or has no source.
     sources.push(
+      {
+        server: 'Videasy',
+        quality: 'Auto',
+        url: `https://player.videasy.net/movie/${rawId}?color=34D399`,
+        type: 'embed',
+      },
       {
         server: 'VidLink',
         quality: 'Auto',
@@ -58,12 +65,6 @@ export async function resolveVidSrcStream(
         type: 'embed',
       },
       {
-        server: 'Videasy',
-        quality: 'Auto',
-        url: `https://player.videasy.net/movie/${rawId}`,
-        type: 'embed',
-      },
-      {
         server: '2Embed',
         quality: 'Auto',
         url: `https://www.2embed.cc/embed/${rawId}`,
@@ -78,10 +79,19 @@ export async function resolveVidSrcStream(
     );
   } else if (type === 'tv') {
     // ── TV servers (film/TV catalogue providers — kept separate from anime) ──
-    // VidLink is the DEFAULT web player (first); the rest are Switch-Server fallbacks.
+    // Videasy is the DEFAULT web player (first). episodeSelector + nextEpisode +
+    // autoplayNextEpisode turn on its built-in season/episode panel and Up-Next
+    // UI (the in-player episode browser cineby shows); color = PureVerse emerald.
+    // The rest are Switch-Server fallbacks.
     const s = season || '1';
     const e = episode || '1';
     sources.push(
+      {
+        server: 'Videasy',
+        quality: 'Auto',
+        url: `https://player.videasy.net/tv/${rawId}/${s}/${e}?color=34D399&episodeSelector=true&nextEpisode=true&autoplayNextEpisode=true`,
+        type: 'embed',
+      },
       {
         server: 'VidLink',
         quality: 'Auto',
@@ -105,12 +115,6 @@ export async function resolveVidSrcStream(
         server: 'VidSrc.cc',
         quality: 'Auto',
         url: `https://vidsrc.cc/v2/embed/tv/${rawId}/${s}/${e}`,
-        type: 'embed',
-      },
-      {
-        server: 'Videasy',
-        quality: 'Auto',
-        url: `https://player.videasy.net/tv/${rawId}/${s}/${e}`,
         type: 'embed',
       },
       {
