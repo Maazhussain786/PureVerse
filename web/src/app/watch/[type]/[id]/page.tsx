@@ -82,6 +82,7 @@ function WatchPageInner() {
   // hovering the player scrolls the page; one click re-enters control mode.
   const [scrollGuard, setScrollGuard] = useState(false);
   const lastProgressSync = useRef(0);
+  const pendingEpRef = useRef<number | null>(null); // episode we're syncing the player to
 
   // ─── Playback tip (dismissible, remembered) ───
   useEffect(() => {
@@ -300,6 +301,24 @@ function WatchPageInner() {
       const ovrSeason = Number.isFinite(pSeason) && pSeason > 0 ? pSeason : undefined;
       const ovrEpisode = Number.isFinite(pEpisode) && pEpisode > 0 ? pEpisode : undefined;
 
+      // ── Keep Videasy's episode panel alive ──
+      // Videasy drops its ?episodeSelector param when it navigates internally to
+      // a new episode (so the panel vanishes after one change). When it reports a
+      // different episode, re-sync our route → the iframe reloads at that episode
+      // with the param re-applied, and the selector comes back every time.
+      if (
+        playerOwnsEpisodes &&
+        isSeries &&
+        ovrEpisode &&
+        ovrEpisode !== episode &&
+        ovrEpisode !== pendingEpRef.current
+      ) {
+        pendingEpRef.current = ovrEpisode;
+        recordHistory(undefined, payload.currentTime, payload.duration, ovrSeason, ovrEpisode);
+        goToEpisode(ovrSeason ?? season, ovrEpisode);
+        return;
+      }
+
       if (eventName === "timeupdate" || eventName === "pause") {
         const now = Date.now();
         if (eventName === "timeupdate" && now - lastProgressSync.current < 10_000) return;
@@ -323,7 +342,7 @@ function WatchPageInner() {
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [recordHistory, autoplayNext, nextEpisode, goToEpisode, streamData, activeSourceIdx]);
+  }, [recordHistory, autoplayNext, nextEpisode, goToEpisode, streamData, activeSourceIdx, episode, season]);
 
   // ─── Keyboard shortcuts ───
   useEffect(() => {
