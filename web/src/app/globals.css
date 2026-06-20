@@ -297,17 +297,6 @@ body {
     max-width: calc((100vh - 132px) * 16 / 9);
   }
 }
-/* When WE put the player into fullscreen, fill the whole screen edge-to-edge. */
-.watch-player-stage:fullscreen {
-  max-width: none;
-  width: 100vw;
-  height: 100vh;
-  aspect-ratio: auto;
-  border-radius: 0;
-}
-.watch-player-stage:fullscreen iframe {
-  border-radius: 0;
-}
 
 .animate-fade-in {
   animation: fadeIn 0.4s ease both;
