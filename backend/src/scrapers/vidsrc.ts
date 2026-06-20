@@ -29,10 +29,17 @@ export async function resolveVidSrcStream(
 
   if (type === 'movie') {
     // ── MOVIE servers (film/TV catalogue providers — kept separate from anime) ──
-    // VidLink is the DEFAULT web player (first) — clean player; episode browsing
-    // is handled by OUR own UI on the watch/details pages. Videasy is kept as a
-    // Switch-Server option (its in-player episode panel) but is no longer default.
+    // Videasy is the DEFAULT for the WEBSITE (first → web picks source[0]); clean
+    // Netflix-style UI + emerald accent. The MOBILE app ignores this order and
+    // picks VidFast by name (see _defaultSourceIndex). The rest are Switch-Server
+    // fallbacks.
     sources.push(
+      {
+        server: 'Videasy',
+        quality: 'Auto',
+        url: `https://player.videasy.net/movie/${rawId}?color=34D399`,
+        type: 'embed',
+      },
       {
         server: 'VidLink',
         quality: 'Auto',
@@ -59,12 +66,6 @@ export async function resolveVidSrcStream(
         type: 'embed',
       },
       {
-        server: 'Videasy',
-        quality: 'Auto',
-        url: `https://player.videasy.net/movie/${rawId}?color=34D399`,
-        type: 'embed',
-      },
-      {
         server: '2Embed',
         quality: 'Auto',
         url: `https://www.2embed.cc/embed/${rawId}`,
@@ -79,12 +80,19 @@ export async function resolveVidSrcStream(
     );
   } else if (type === 'tv') {
     // ── TV servers (film/TV catalogue providers — kept separate from anime) ──
-    // VidLink is the DEFAULT web player (first) — clean player; episode browsing
-    // is OUR own UI on the watch/details pages. Videasy stays as a Switch-Server
-    // option (its in-player episode panel via episodeSelector) but isn't default.
+    // Videasy is the DEFAULT for the WEBSITE (first → web picks source[0]).
+    // episodeSelector + nextEpisode + autoplayNextEpisode turn on its built-in
+    // season/episode panel + Up-Next (the cineby-style in-player browser);
+    // color = PureVerse emerald. The MOBILE app picks VidFast by name instead.
     const s = season || '1';
     const e = episode || '1';
     sources.push(
+      {
+        server: 'Videasy',
+        quality: 'Auto',
+        url: `https://player.videasy.net/tv/${rawId}/${s}/${e}?color=34D399&episodeSelector=true&nextEpisode=true&autoplayNextEpisode=true`,
+        type: 'embed',
+      },
       {
         server: 'VidLink',
         quality: 'Auto',
@@ -108,12 +116,6 @@ export async function resolveVidSrcStream(
         server: 'VidSrc.cc',
         quality: 'Auto',
         url: `https://vidsrc.cc/v2/embed/tv/${rawId}/${s}/${e}`,
-        type: 'embed',
-      },
-      {
-        server: 'Videasy',
-        quality: 'Auto',
-        url: `https://player.videasy.net/tv/${rawId}/${s}/${e}?color=34D399&episodeSelector=true&nextEpisode=true&autoplayNextEpisode=true`,
         type: 'embed',
       },
       {

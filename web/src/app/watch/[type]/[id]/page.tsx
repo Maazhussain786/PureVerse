@@ -642,8 +642,12 @@ function WatchPageInner() {
               </div>
             </div>
 
-            {/* ─── Episodes — our own clean vertical browser (below the player) ─── */}
-            {isSeries && details && (details.totalSeasons || 0) > 0 && (
+            {/* ─── Episodes — our own clean vertical browser (below the player).
+                Hidden when Videasy is active since it has its own in-player
+                episode panel; shown for every other server so episode browsing
+                is never missing. ─── */}
+            {isSeries && details && (details.totalSeasons || 0) > 0 &&
+              !(activeSource?.server || "").toLowerCase().includes("videasy") && (
               <div className="glass-panel rounded-2xl" style={{ marginTop: '24px', padding: '20px' }}>
                 <EpisodeBrowser
                   mediaId={details.id}
