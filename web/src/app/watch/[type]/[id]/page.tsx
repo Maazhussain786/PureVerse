@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useUserState } from "../../../components/UserStateContext";
 import { useAuth } from "../../../components/AuthContext";
 import MediaRow from "../../../components/MediaRow";
+import EpisodeBrowser from "../../../components/EpisodeBrowser";
 import ServerSelector, { StreamSource } from "../../../components/watch/ServerSelector";
 import { EpisodeInfo } from "../../../components/watch/EpisodePanel";
 import CreatePartyModal from "../../../components/party/CreatePartyModal";
@@ -640,6 +641,21 @@ function WatchPageInner() {
                 </div>
               </div>
             </div>
+
+            {/* ─── Episodes — our own clean vertical browser (below the player) ─── */}
+            {isSeries && details && (details.totalSeasons || 0) > 0 && (
+              <div className="glass-panel rounded-2xl" style={{ marginTop: '24px', padding: '20px' }}>
+                <EpisodeBrowser
+                  mediaId={details.id}
+                  mediaType={type}
+                  totalSeasons={details.totalSeasons || 1}
+                  initialSeason={season}
+                  initialEpisodes={details.episodes}
+                  currentSeason={season}
+                  currentEpisode={episode}
+                />
+              </div>
+            )}
 
             {/* ─── Server selector ─── */}
             {streamData && streamData.sources.length > 0 && (

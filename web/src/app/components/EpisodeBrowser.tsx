@@ -25,6 +25,9 @@ interface EpisodeBrowserProps {
   totalSeasons: number;
   initialSeason?: number;
   initialEpisodes?: Episode[];
+  // When rendered on the watch page, highlight the episode that's playing.
+  currentSeason?: number;
+  currentEpisode?: number;
 }
 
 function proxyImage(url: string): string {
@@ -48,6 +51,8 @@ export default function EpisodeBrowser({
   totalSeasons,
   initialSeason,
   initialEpisodes,
+  currentSeason,
+  currentEpisode,
 }: EpisodeBrowserProps) {
   const { watchHistory } = useUserState();
   const startSeason = initialSeason || 1;
@@ -148,13 +153,20 @@ export default function EpisodeBrowser({
             const progress = progressFor(ep.episodeNumber, seasonNum);
             const inProgress = progress > 0 && progress < 95;
             const watched = progress >= 95;
+            const isCurrent =
+              currentEpisode === ep.episodeNumber &&
+              (currentSeason ?? season) === seasonNum;
             const href = `/watch/${mediaType}/${mediaId}?season=${seasonNum}&episode=${ep.episodeNumber}`;
 
             return (
               <Link
                 key={ep.id}
                 href={href}
-                className="group flex items-stretch gap-4 md:gap-5 p-2.5 md:p-3 rounded-2xl bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-white/[0.06] hover:ring-[var(--accent-primary)]/40 transition-all duration-200"
+                className={`group flex items-stretch gap-4 md:gap-5 p-2.5 md:p-3 rounded-2xl transition-all duration-200 ${
+                  isCurrent
+                    ? "bg-[var(--accent-primary)]/10 ring-1 ring-[var(--accent-primary)]/50"
+                    : "bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-white/[0.06] hover:ring-[var(--accent-primary)]/40"
+                }`}
               >
                 {/* Thumbnail */}
                 <div className="relative flex-none w-[136px] sm:w-[180px] md:w-[230px] aspect-video rounded-xl overflow-hidden bg-[var(--bg-elevated)]">
@@ -198,18 +210,22 @@ export default function EpisodeBrowser({
                     <span className="text-lg md:text-2xl font-extrabold text-[var(--accent-primary)] leading-none tabular-nums">
                       {ep.episodeNumber}
                     </span>
-                    <h3 className="flex-1 min-w-0 text-[15px] md:text-[17px] font-bold text-white truncate">
+                    <h3 className={`flex-1 min-w-0 text-[15px] md:text-[17px] font-bold truncate ${isCurrent ? "text-[var(--accent-primary)]" : "text-white"}`}>
                       {ep.title || `Episode ${ep.episodeNumber}`}
                     </h3>
-                    {watched && (
+                    {isCurrent ? (
+                      <span className="flex-none flex items-center gap-1.5 text-[11px] font-bold text-[var(--accent-primary)]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] animate-pulse" />
+                        <span className="hidden sm:inline">Now Playing</span>
+                      </span>
+                    ) : watched ? (
                       <span className="flex-none flex items-center gap-1 text-[11px] font-bold text-[var(--accent-primary)]">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                         <span className="hidden sm:inline">Watched</span>
                       </span>
-                    )}
-                    {inProgress && (
+                    ) : inProgress ? (
                       <span className="flex-none text-[12px] font-bold text-[var(--accent-primary)]">{Math.round(progress)}%</span>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="flex items-center gap-2 mb-1.5 text-[12px] md:text-[13px] font-medium text-[var(--text-muted)]">
