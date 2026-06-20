@@ -81,7 +81,27 @@ function WatchPageInner() {
   // provider's play button (no extra click, no muted-autoplay), and afterwards
   // hovering the player scrolls the page; one click re-enters control mode.
   const [scrollGuard, setScrollGuard] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const playerStageRef = useRef<HTMLDivElement>(null);
   const lastProgressSync = useRef(0);
+
+  // ─── Fullscreen the player container (reliable, doesn't depend on reaching
+  // the provider's own fullscreen button which can sit below the fold) ───
+  const toggleFullscreen = useCallback(() => {
+    const el = playerStageRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    } else {
+      el.requestFullscreen?.().catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFs = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
 
   // ─── Playback tip (dismissible, remembered) ───
   useEffect(() => {
@@ -405,7 +425,8 @@ function WatchPageInner() {
               </div>
             )}
             <div
-              className="relative w-full aspect-video rounded-2xl bg-black ring-1 ring-white/[0.08] shadow-[0_8px_50px_rgba(0,0,0,0.85)]"
+              ref={playerStageRef}
+              className="watch-player-stage rounded-2xl bg-black ring-1 ring-white/[0.08] shadow-[0_8px_50px_rgba(0,0,0,0.85)]"
               onMouseLeave={() => activeSource && setScrollGuard(true)}
             >
               {loading && (
@@ -548,6 +569,22 @@ function WatchPageInner() {
                   </button>
                 )}
                 <button
+                  onClick={toggleFullscreen}
+                  className="btn-secondary btn-sm"
+                  title="Fullscreen (the player's own button can sit below the screen edge)"
+                >
+                  {isFullscreen ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3" />
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />
+                    </svg>
+                  )}
+                  {isFullscreen ? "Exit" : "Fullscreen"}
+                </button>
+                <button
                   onClick={() => setPartyOpen(true)}
                   className="btn-secondary btn-sm !text-[var(--accent-teal)] !border-[var(--accent-teal)]/35 hover:!border-[var(--accent-teal)]/60"
                 >
@@ -643,11 +680,10 @@ function WatchPageInner() {
             </div>
 
             {/* ─── Episodes — our own clean vertical browser (below the player).
-                Hidden when Videasy is active since it has its own in-player
-                episode panel; shown for every other server so episode browsing
-                is never missing. ─── */}
-            {isSeries && details && (details.totalSeasons || 0) > 0 &&
-              !(activeSource?.server || "").toLowerCase().includes("videasy") && (
+                Always shown: Videasy's in-player selector drops its params after
+                one internal episode change, so this is the reliable way to keep
+                switching episodes (and it works for every other server too). ─── */}
+            {isSeries && details && (details.totalSeasons || 0) > 0 && (
               <div className="glass-panel rounded-2xl" style={{ marginTop: '24px', padding: '20px' }}>
                 <EpisodeBrowser
                   mediaId={details.id}
