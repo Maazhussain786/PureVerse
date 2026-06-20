@@ -9,6 +9,7 @@ import {
   fetchTopRatedMovies,
   fetchTopRatedSeries,
   fetchNowPlayingMovies,
+  fetchLatestSeries,
   fetchRecommendations,
   fetchTrendingAnimeTmdb,
   fetchPopularAnimeTmdb,
@@ -391,6 +392,17 @@ export const getNowPlaying = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Now playing error:', error?.message || error);
     res.status(500).json({ success: false, message: 'Failed to fetch now playing' });
+  }
+};
+
+// ─── Latest / Now Airing Series ──────────────────────────
+export const getLatestSeries = async (_req: Request, res: Response) => {
+  try {
+    const data = await fetchLatestSeries();
+    res.json({ success: true, data });
+  } catch (error: any) {
+    console.error('Latest series error:', error?.message || error);
+    res.status(500).json({ success: false, message: 'Failed to fetch latest series' });
   }
 };
 

@@ -16,6 +16,7 @@ import {
   getSeasonEpisodes,
   getTopRated,
   getNowPlaying,
+  getLatestSeries,
   getRecommendations,
   getAnikotoRecent,
   getAnikotoSeries,
@@ -66,6 +67,7 @@ router.get('/trending/anime', getTrendingAnime);
 router.get('/popular/anime', getPopularAnime);
 router.get('/top-rated/:type', getTopRated);
 router.get('/now-playing', getNowPlaying);
+router.get('/latest/series', getLatestSeries);
 router.get('/discover/:category', discoverMedia);
 
 // ─── Search ───────────────────────────────────────────────

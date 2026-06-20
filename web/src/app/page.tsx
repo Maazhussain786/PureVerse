@@ -156,6 +156,7 @@ export default function Home() {
   const { data: topRatedMovies, loading: loadingTopMovies } = useApiData("/top-rated/movies");
   const { data: topRatedSeries, loading: loadingTopSeries } = useApiData("/top-rated/series");
   const { data: nowPlaying, loading: loadingNowPlaying } = useApiData("/now-playing");
+  const { data: latestSeries, loading: loadingLatestSeries } = useApiData("/latest/series");
 
   // Personalized recommendations seeded from the most recent user activity.
   const recSeed = continueWatching[0] || watchlist[0];
@@ -225,6 +226,20 @@ export default function Home() {
             ranked
             layout="landscape"
           />
+        ) : null}
+
+        {/* New & Now Airing — the latest series (currently airing + newest
+            premieres), so brand-new shows surface in browse, not just by id. */}
+        {!loadingLatestSeries && latestSeries.length > 0 ? (
+          <MediaRow
+            title="New & Now Airing"
+            items={latestSeries}
+            viewAllHref="/series"
+            icon={icons.sparkle}
+            layout="landscape"
+          />
+        ) : loadingLatestSeries ? (
+          <MediaRowSkeleton landscape />
         ) : null}
 
         {/* Trending Movies — cinematic wide cards */}

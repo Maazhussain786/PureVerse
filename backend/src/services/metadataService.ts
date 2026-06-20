@@ -316,6 +316,53 @@ export async function fetchNowPlayingMovies(): Promise<UnifiedMediaItem[]> {
   return results;
 }
 
+// ─── Latest / Now Airing series ───────────────────────────
+// TMDB's daily "trending" only carries the ~20 hottest titles, so brand-new
+// shows (e.g. a just-premiered 2026 series) never surface in browse even though
+// their details/stream work by direct id. This pulls the currently-airing +
+// newest highly-rated series so the catalog actually shows "the latest things".
+export async function fetchLatestSeries(): Promise<UnifiedMediaItem[]> {
+  const cacheKey = 'tmdb_latest_series';
+  const cached = cache.get<UnifiedMediaItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const today = new Date();
+  const sixMonthsAgo = new Date(today);
+  sixMonthsAgo.setMonth(today.getMonth() - 6);
+  const fmt = (d: Date) => d.toISOString().split('T')[0];
+
+  const [onAirRes, newestRes] = await Promise.allSettled([
+    tmdbApi.get('/tv/on_the_air', { params: { page: 1 } }),
+    // Newest premieres with at least a little traction (vote_count floor keeps
+    // out empty placeholder entries), most recent first.
+    tmdbApi.get('/discover/tv', {
+      params: {
+        sort_by: 'first_air_date.desc',
+        'first_air_date.gte': fmt(sixMonthsAgo),
+        'first_air_date.lte': fmt(today),
+        'vote_count.gte': 5,
+        without_genres: '10767,10763', // drop talk shows & news
+        page: 1,
+      },
+    }),
+  ]);
+
+  const pick = (r: PromiseSettledResult<any>): any[] =>
+    r.status === 'fulfilled' ? r.value.data?.results || [] : [];
+
+  // Interleave on-air + newest, de-dupe by id, keep a poster.
+  const seen = new Set<number>();
+  const results: UnifiedMediaItem[] = [];
+  for (const item of [...pick(onAirRes), ...pick(newestRes)]) {
+    if (!item?.id || seen.has(item.id) || !item.poster_path) continue;
+    seen.add(item.id);
+    results.push(mapTmdbToUnified({ ...item, media_type: 'tv' }));
+  }
+
+  cache.set(cacheKey, results, 3600); // refresh hourly — this is "latest"
+  return results;
+}
+
 // ─── Recommendations ─────────────────────────────────────
 export async function fetchRecommendations(
   type: 'movie' | 'tv',
