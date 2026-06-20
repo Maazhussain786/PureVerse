@@ -51,6 +51,19 @@ export async function resolveVidSrcStream(
         type: 'embed',
       },
       {
+        // Different infra from vidsrc.to — often has newer releases first.
+        server: 'VidSrc.cc',
+        quality: 'Auto',
+        url: `https://vidsrc.cc/v2/embed/movie/${rawId}`,
+        type: 'embed',
+      },
+      {
+        server: 'Videasy',
+        quality: 'Auto',
+        url: `https://player.videasy.net/movie/${rawId}`,
+        type: 'embed',
+      },
+      {
         server: '2Embed',
         quality: 'Auto',
         url: `https://www.2embed.cc/embed/${rawId}`,
@@ -85,6 +98,19 @@ export async function resolveVidSrcStream(
         server: 'VidSrc',
         quality: 'Auto',
         url: `https://vidsrc.to/embed/tv/${rawId}/${s}/${e}`,
+        type: 'embed',
+      },
+      {
+        // Different infra from vidsrc.to — often has newer episodes first.
+        server: 'VidSrc.cc',
+        quality: 'Auto',
+        url: `https://vidsrc.cc/v2/embed/tv/${rawId}/${s}/${e}`,
+        type: 'embed',
+      },
+      {
+        server: 'Videasy',
+        quality: 'Auto',
+        url: `https://player.videasy.net/tv/${rawId}/${s}/${e}`,
         type: 'embed',
       },
       {
