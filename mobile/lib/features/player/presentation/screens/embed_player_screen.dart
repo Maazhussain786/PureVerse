@@ -86,15 +86,18 @@ class _EmbedPlayerScreenState extends ConsumerState<EmbedPlayerScreen> {
     }
   }
 
-  /// Which server to start on. Movies & TV default to the **VidFast** web
-  /// player (most reliable + fastest start on mobile); anime keeps its own
-  /// provider order (PureVerse SUB first). Falls back to the first embed.
+  /// Which server to start on. Movies & TV default to **Videasy** (matches the
+  /// website — clean UI + the in-player season/episode panel), with **VidFast**
+  /// as the fallback. Anime keeps its own provider order (PureVerse SUB first).
+  /// Falls back to the first embed if neither is present.
   int _defaultSourceIndex(List<StreamSource> sources) {
     if (sources.isEmpty) return 0;
     if (widget.mediaType == 'movie' || widget.mediaType == 'tv') {
-      final vidfast = sources.indexWhere(
-          (s) => s.server.toLowerCase().contains('vidfast'));
-      if (vidfast >= 0) return vidfast;
+      for (final name in const ['videasy', 'vidfast']) {
+        final i =
+            sources.indexWhere((s) => s.server.toLowerCase().contains(name));
+        if (i >= 0) return i;
+      }
     }
     final embed = sources.indexWhere((s) => s.isEmbed);
     return embed >= 0 ? embed : 0;
