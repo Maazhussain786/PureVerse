@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useUserState } from "../../../components/UserStateContext";
 import { useAuth } from "../../../components/AuthContext";
 import MediaRow from "../../../components/MediaRow";
+import NativePlayer from "../../../components/NativePlayer";
 import ServerSelector, { StreamSource } from "../../../components/watch/ServerSelector";
 import EpisodePanel, { EpisodeInfo } from "../../../components/watch/EpisodePanel";
 import CreatePartyModal from "../../../components/party/CreatePartyModal";
@@ -81,6 +82,11 @@ function WatchPageInner() {
   // provider's play button (no extra click, no muted-autoplay), and afterwards
   // hovering the player scrolls the page; one click re-enters control mode.
   const [scrollGuard, setScrollGuard] = useState(false);
+  // Direct-stream (custom HD player) state. When we can resolve + proxy a real
+  // .m3u8 for the active server, we play it in our own hls.js player; otherwise
+  // the page falls back to the provider iframe. `forUrl` ties the resolved
+  // stream to the server it came from so a stale result is never shown.
+  const [direct, setDirect] = useState<{ forUrl: string; url: string } | null>(null);
   const lastProgressSync = useRef(0);
 
   // ─── Playback tip (dismissible, remembered) ───
@@ -182,6 +188,41 @@ function WatchPageInner() {
     setScrollGuard(false); // new source → start in control mode
     setActiveSourceIdx((idx) => (idx + 1) % count);
   }, [streamData]);
+
+  // ─── Resolve a direct .m3u8 for the active server (custom HD player) ───
+  // Best-effort: providers that expose a direct manifest get our own hls.js
+  // player; everything else silently stays on the iframe. The resolved stream
+  // is played through /api/hls (rewrites the playlist + carries the Referer).
+  useEffect(() => {
+    const srcUrl = streamData?.sources?.[activeSourceIdx]?.url;
+    if (!srcUrl) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/proxy/stream-sources?url=${encodeURIComponent(srcUrl)}`
+        );
+        const j = await res.json();
+        if (cancelled || !j?.success || !j.url) return;
+        let ref = "";
+        try {
+          ref = new URL(srcUrl).origin + "/";
+        } catch { /* no referer */ }
+        setDirect({
+          forUrl: srcUrl,
+          url: `/api/hls?url=${encodeURIComponent(j.url)}&ref=${encodeURIComponent(ref)}`,
+        });
+      } catch {
+        /* no direct stream → iframe fallback */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [streamData, activeSourceIdx]);
+
+  // The custom player gave up (stream blocked/expired) → drop to the iframe.
+  const handleDirectFatal = useCallback(() => setDirect(null), []);
 
   // ─── Fetch details + recommendations ───
   useEffect(() => {
@@ -349,6 +390,8 @@ function WatchPageInner() {
   };
 
   const activeSource = streamData?.sources?.[activeSourceIdx];
+  // Only use the resolved direct stream if it belongs to the active server.
+  const directUrl = direct && direct.forUrl === activeSource?.url ? direct.url : null;
 
   // Warm up the TCP/TLS connection to the active provider so the embed's first
   // request is faster — shaves a noticeable chunk off perceived load time.
@@ -441,14 +484,37 @@ function WatchPageInner() {
 
               {!loading && !error && activeSource && (
                 <>
-                  <iframe
-                    key={`${activeSource.url}-open`}
-                    src={activeSource.url}
-                    className="w-full h-full border-none rounded-2xl"
-                    allowFullScreen
-                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                    referrerPolicy="origin"
-                  />
+                  {directUrl ? (
+                    /* Custom HD player: a direct .m3u8 we resolved + proxied,
+                       played in our own hls.js <video> (Cineby-style). Falls
+                       back to the iframe automatically if it can't play. */
+                    <>
+                      <div className="absolute inset-0 rounded-2xl overflow-hidden">
+                        <NativePlayer
+                          key={directUrl}
+                          url={directUrl}
+                          poster={details?.bannerUrl || details?.posterUrl}
+                          subtitles={(streamData?.subtitles as { lang?: string; url?: string }[] | undefined ?? [])
+                            .filter((s) => !!s?.url && !!s?.lang)
+                            .map((s) => ({ lang: s.lang as string, url: s.url as string }))}
+                          onFatal={handleDirectFatal}
+                        />
+                      </div>
+                      <span className="absolute top-3 left-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-black bg-[var(--accent-primary)] shadow-[0_0_15px_var(--accent-glow)]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-black/70 animate-pulse" />
+                        Direct HD
+                      </span>
+                    </>
+                  ) : (
+                    <iframe
+                      key={`${activeSource.url}-open`}
+                      src={activeSource.url}
+                      className="w-full h-full border-none rounded-2xl"
+                      allowFullScreen
+                      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                      referrerPolicy="origin"
+                    />
+                  )}
                   {/* Region-blocked iframes render blank without firing
                       onError — the recovery control must always be reachable. */}
                   {(streamData?.sources.length ?? 0) > 1 && (
@@ -470,8 +536,10 @@ function WatchPageInner() {
                   {/* Scroll-guard overlay: armed once the cursor has left the
                       player, it lets the mouse wheel scroll the page instead of
                       being swallowed by the iframe. A single click hands control
-                      back to the player. Transparent so the video stays visible. */}
-                  {scrollGuard && (
+                      back to the player. Transparent so the video stays visible.
+                      Only needed for the iframe — our own <video> never
+                      scroll-jacks. */}
+                  {!directUrl && scrollGuard && (
                     <button
                       type="button"
                       onClick={() => setScrollGuard(false)}

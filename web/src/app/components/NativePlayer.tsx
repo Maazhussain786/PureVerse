@@ -12,11 +12,18 @@ interface NativePlayerProps {
   url: string;
   subtitles?: SubtitleTrack[];
   poster?: string;
+  /** Called when the stream can't be played, so the caller can fall back. */
+  onFatal?: () => void;
 }
 
-export default function NativePlayer({ url, subtitles, poster }: NativePlayerProps) {
+export default function NativePlayer({ url, subtitles, poster, onFatal }: NativePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  // Keep the latest onFatal without re-running the effect when it changes.
+  const onFatalRef = useRef(onFatal);
+  useEffect(() => {
+    onFatalRef.current = onFatal;
+  }, [onFatal]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -27,6 +34,18 @@ export default function NativePlayer({ url, subtitles, poster }: NativePlayerPro
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
+
+    // Give a stuck/blocked stream a bounded time to produce its first frame,
+    // then hand back to the caller (→ iframe fallback) instead of hanging.
+    let recovered = false;
+    let networkRetries = 0;
+    const startTimeout = window.setTimeout(() => {
+      if (!recovered) onFatalRef.current?.();
+    }, 12000);
+    const clearStart = () => {
+      recovered = true;
+      window.clearTimeout(startTimeout);
+    };
 
     if (Hls.isSupported()) {
       const hls = new Hls({
@@ -42,36 +61,53 @@ export default function NativePlayer({ url, subtitles, poster }: NativePlayerPro
       hlsRef.current = hls;
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        clearStart();
         video.play().catch(() => {});
       });
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
+        if (!data.fatal) return;
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            // Retry a couple of times, then give up to the fallback.
+            if (networkRetries++ < 2) {
               hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
-              break;
-            default:
+            } else {
+              clearStart();
               hls.destroy();
-              break;
-          }
+              onFatalRef.current?.();
+            }
+            break;
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            hls.recoverMediaError();
+            break;
+          default:
+            clearStart();
+            hls.destroy();
+            onFatalRef.current?.();
+            break;
         }
       });
 
       return () => {
+        window.clearTimeout(startTimeout);
         if (hlsRef.current) {
           hlsRef.current.destroy();
           hlsRef.current = null;
         }
       };
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      // Safari / iOS native HLS.
       video.src = url;
-      video.addEventListener('loadedmetadata', () => {
+      video.addEventListener("loadedmetadata", () => {
+        clearStart();
         video.play().catch(() => {});
       });
+      video.addEventListener("error", () => onFatalRef.current?.());
+      return () => window.clearTimeout(startTimeout);
+    } else {
+      window.clearTimeout(startTimeout);
+      onFatalRef.current?.();
     }
   }, [url]);
 
