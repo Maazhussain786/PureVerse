@@ -230,9 +230,20 @@ function WatchPageInner() {
   }, [isSeries, episodeList, episode, season]);
 
   // ─── History recording ───
+  // ovrSeason/ovrEpisode let the player's postMessage tell us which episode it
+  // actually moved to (when the user changes episode inside the player), so
+  // continue-watching tracks it without us reloading the iframe.
   const recordHistory = useCallback(
-    (progress?: number, positionSec?: number, durationSec?: number) => {
+    (
+      progress?: number,
+      positionSec?: number,
+      durationSec?: number,
+      ovrSeason?: number,
+      ovrEpisode?: number
+    ) => {
       if (!details) return;
+      const s = ovrSeason ?? season;
+      const e = ovrEpisode ?? episode;
       addToHistory({
         id: details.id,
         type: details.type,
@@ -240,9 +251,9 @@ function WatchPageInner() {
         posterUrl: details.posterUrl,
         rating: details.rating,
         releaseYear: details.releaseYear,
-        season: isSeries ? season : undefined,
-        episode: isSeries ? episode : undefined,
-        episodeTitle: currentEpInfo?.title,
+        season: isSeries ? s : undefined,
+        episode: isSeries ? e : undefined,
+        episodeTitle: e === episode ? currentEpInfo?.title : undefined,
         progress: progress ?? 3,
         positionSec,
         durationSec,
@@ -257,12 +268,18 @@ function WatchPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [details?.id, season, episode, loading, error]);
 
-  // ─── Embed player events (progress + autoplay-next) ───
-  // Some providers (VidLink-style) postMessage PLAYER_EVENT payloads with
-  // real timestamps; when present we get accurate continue-watching data
-  // and can auto-advance. Cross-origin iframes that stay silent simply
-  // fall back to the on-open history entry.
+  // ─── Embed player events (progress + episode tracking) — the cineby way ───
+  // Videasy/VidLink-style players postMessage PLAYER_EVENT payloads carrying the
+  // CURRENT season/episode + timestamps. We just LISTEN: track progress and the
+  // episode the player is on (so continue-watching follows in-player episode
+  // changes) WITHOUT ever reloading the iframe. Players that advance episodes
+  // themselves (Videasy: autoplayNextEpisode) own the next-episode jump — we do
+  // NOT navigate the parent for them, because remounting the iframe is exactly
+  // what was killing the in-player episode panel.
   useEffect(() => {
+    const activeServer = (streamData?.sources?.[activeSourceIdx]?.server || "").toLowerCase();
+    const playerOwnsEpisodes = activeServer.includes("videasy");
+
     const handleMessage = (event: MessageEvent) => {
       let data: any = event.data;
       if (typeof data === "string") {
@@ -276,6 +293,13 @@ function WatchPageInner() {
       const payload = data.payload || data.data || {};
       const eventName = data.event || payload.event;
 
+      // The episode the player itself is on right now (may differ from the URL
+      // once the user switches episode inside the player).
+      const pSeason = Number(payload.season);
+      const pEpisode = Number(payload.episode);
+      const ovrSeason = Number.isFinite(pSeason) && pSeason > 0 ? pSeason : undefined;
+      const ovrEpisode = Number.isFinite(pEpisode) && pEpisode > 0 ? pEpisode : undefined;
+
       if (eventName === "timeupdate" || eventName === "pause") {
         const now = Date.now();
         if (eventName === "timeupdate" && now - lastProgressSync.current < 10_000) return;
@@ -285,18 +309,21 @@ function WatchPageInner() {
             (payload.duration ? (payload.currentTime / payload.duration) * 100 : 0)
         );
         if (progress > 0) {
-          recordHistory(Math.min(progress, 99), payload.currentTime, payload.duration);
+          recordHistory(Math.min(progress, 99), payload.currentTime, payload.duration, ovrSeason, ovrEpisode);
         }
       } else if (eventName === "ended" || eventName === "complete") {
-        recordHistory(100);
-        if (autoplayNext && nextEpisode) {
+        recordHistory(100, undefined, undefined, ovrSeason, ovrEpisode);
+        // Only WE advance for players that don't do it themselves. For Videasy
+        // (autoplayNextEpisode) we leave the iframe alone so its episode panel
+        // survives.
+        if (!playerOwnsEpisodes && autoplayNext && nextEpisode) {
           goToEpisode(nextEpisode.season, nextEpisode.episode);
         }
       }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [recordHistory, autoplayNext, nextEpisode, goToEpisode]);
+  }, [recordHistory, autoplayNext, nextEpisode, goToEpisode, streamData, activeSourceIdx]);
 
   // ─── Keyboard shortcuts ───
   useEffect(() => {
