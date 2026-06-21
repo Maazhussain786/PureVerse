@@ -441,14 +441,14 @@ function WatchPageInner() {
             key={`${activeSource.url}-open`}
             src={activeSource.url}
             className="w-full h-full border-none"
-            allowFullScreen={true}
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            allowFullScreen
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture; display-capture"
             referrerPolicy="origin"
           />
         )}
       </div>
 
-      <div className="watch-layout-container px-3 md:px-6 pt-6 pb-12">
+      <div className="watch-layout-container px-3 md:px-6 pt-16 pb-12">
         <div className="watch-theater-layout">
           <div className="flex-1 min-w-0">
             {tipOpen && (
