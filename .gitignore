@@ -11,6 +11,10 @@ out/
 # User data store (backend JSON database)
 backend/data/
 
+# Ad-hoc scratch / debug dumps
+backend/scratch*.json
+push_*.ps1
+
 # Environment variables
 .env
 .env.local

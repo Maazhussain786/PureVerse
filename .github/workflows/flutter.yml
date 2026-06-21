@@ -51,27 +51,41 @@ jobs:
         working-directory: mobile
         run: flutter analyze
 
-      - name: Build debug APK
+      - name: Build release APK (per-ABI)
         working-directory: mobile
         env:
           API_URL: ${{ github.event.inputs.api_url || vars.API_URL }}
         run: |
+          # RELEASE + per-ABI split is the size fix. A debug, universal APK
+          # bundles JIT Dart + debug symbols + native libs (libmpv, libwebrtc)
+          # for EVERY architecture → ~250 MB. Release does AOT + tree-shaking and
+          # --split-per-abi ships ONE architecture per APK → ~80–90 MB. arm
+          # covers all real phones; x86/x86_64 (emulator-only) is skipped.
+          # Release falls back to the committed debug keystore (same SHA-1, so
+          # Google Sign-In keeps working) when no key.properties is present.
+          ARGS="--release --split-per-abi --target-platform android-arm,android-arm64"
           if [ -n "$API_URL" ]; then
             echo "Building against API_URL=$API_URL"
-            flutter build apk --debug --dart-define=API_URL="$API_URL"
+            flutter build apk $ARGS --dart-define=API_URL="$API_URL"
           else
             echo "::warning::No API_URL set — APK will use the emulator default and cannot reach a remote backend. Set the API_URL repo variable."
-            flutter build apk --debug
+            flutter build apk $ARGS
           fi
 
-      - name: Name the APK "PureVerse.apk"
-        run: cp mobile/build/app/outputs/flutter-apk/app-debug.apk PureVerse.apk
+      - name: Collect APKs
+        run: |
+          OUT=mobile/build/app/outputs/flutter-apk
+          cp "$OUT/app-arm64-v8a-release.apk" PureVerse.apk          # most phones
+          cp "$OUT/app-armeabi-v7a-release.apk" PureVerse-arm32.apk  # old 32-bit phones
+          ls -lh PureVerse.apk PureVerse-arm32.apk
 
-      - name: Upload APK (Actions artifact)
+      - name: Upload APKs (Actions artifact)
         uses: actions/upload-artifact@v4
         with:
           name: PureVerse
-          path: PureVerse.apk
+          path: |
+            PureVerse.apk
+            PureVerse-arm32.apk
           if-no-files-found: error
 
       # Publish the raw .apk to a Release for a direct, login-free phone download.
@@ -81,6 +95,6 @@ jobs:
         run: |
           gh release delete flutter-latest --yes --cleanup-tag || true
           gh release create flutter-latest \
-            PureVerse.apk \
+            PureVerse.apk PureVerse-arm32.apk \
             --title "PureVerse (latest build)" \
-            --notes "Tap **PureVerse.apk** below to install on Android. Enable 'Install unknown apps' when prompted."
+            --notes "Tap **PureVerse.apk** to install on Android (works on virtually all phones). On a very old 32-bit device, use **PureVerse-arm32.apk** instead. Enable 'Install unknown apps' when prompted."
