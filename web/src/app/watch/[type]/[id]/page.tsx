@@ -448,6 +448,48 @@ function WatchPageInner() {
     /* malformed url — skip preconnect */
   }
 
+  // ─── Episodes — our own vertical browser. Hidden while Videasy is the active
+  // server (it has its own in-player season/episode panel); shown otherwise. ───
+  const episodesPanel =
+    isSeries && details && (details.totalSeasons || 0) > 0 &&
+    !(activeSource?.server || "").toLowerCase().includes("videasy") ? (
+      <div className="glass-panel rounded-2xl" style={{ marginTop: '24px', padding: '20px' }}>
+        <EpisodeBrowser
+          mediaId={details.id}
+          mediaType={type}
+          totalSeasons={details.totalSeasons || 1}
+          initialSeason={season}
+          initialEpisodes={details.episodes}
+          currentSeason={season}
+          currentEpisode={episode}
+        />
+      </div>
+    ) : null;
+
+  // ─── Server selector ───
+  const serversPanel =
+    streamData && streamData.sources.length > 0 ? (
+      <div className="glass-panel rounded-2xl p-5" style={{ marginTop: '24px', padding: '24px' }}>
+        <div className="flex items-center justify-between mb-4" style={{ marginBottom: '20px' }}>
+          <h3 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space)", gap: '8px' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2">
+              <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
+              <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
+              <line x1="6" x2="6.01" y1="6" y2="6" />
+              <line x1="6" x2="6.01" y1="18" y2="18" />
+            </svg>
+            Servers
+          </h3>
+        </div>
+        <ServerSelector
+          sources={streamData.sources}
+          activeIdx={activeSourceIdx}
+          onSelect={selectServer}
+          mediaType={type}
+        />
+      </div>
+    ) : null;
+
   return (
     <main className="min-h-screen bg-[var(--bg-primary)]" style={{ paddingTop: '80px' }}>
       {/* Preconnect to streaming providers for a faster first frame. The embed
@@ -705,46 +747,19 @@ function WatchPageInner() {
               </div>
             </div>
 
-            {/* ─── Episodes — our own vertical browser (below the player).
-                Hidden while Videasy is the active server (it has its own
-                in-player season/episode panel, cineby-style, now reachable since
-                the player fits the screen); shown for every other server. ─── */}
-            {isSeries && details && (details.totalSeasons || 0) > 0 &&
-              !(activeSource?.server || "").toLowerCase().includes("videasy") && (
-              <div className="glass-panel rounded-2xl" style={{ marginTop: '24px', padding: '20px' }}>
-                <EpisodeBrowser
-                  mediaId={details.id}
-                  mediaType={type}
-                  totalSeasons={details.totalSeasons || 1}
-                  initialSeason={season}
-                  initialEpisodes={details.episodes}
-                  currentSeason={season}
-                  currentEpisode={episode}
-                />
-              </div>
-            )}
-
-            {/* ─── Server selector ─── */}
-            {streamData && streamData.sources.length > 0 && (
-              <div className="glass-panel rounded-2xl p-5" style={{ marginTop: '24px', padding: '24px' }}>
-                <div className="flex items-center justify-between mb-4" style={{ marginBottom: '20px' }}>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2" style={{ fontFamily: "var(--font-space)", gap: '8px' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2">
-                      <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
-                      <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
-                      <line x1="6" x2="6.01" y1="6" y2="6" />
-                      <line x1="6" x2="6.01" y1="18" y2="18" />
-                    </svg>
-                    Servers
-                  </h3>
-                </div>
-                <ServerSelector
-                  sources={streamData.sources}
-                  activeIdx={activeSourceIdx}
-                  onSelect={selectServer}
-                  mediaType={type}
-                />
-              </div>
+            {/* For anime, surface the SUB/DUB server picker ABOVE the episode
+                list (audio choice matters most there); every other type keeps
+                episodes first, then servers. */}
+            {type === "anime" ? (
+              <>
+                {serversPanel}
+                {episodesPanel}
+              </>
+            ) : (
+              <>
+                {episodesPanel}
+                {serversPanel}
+              </>
             )}
           </div>
         </div>
