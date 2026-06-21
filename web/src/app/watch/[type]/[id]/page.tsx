@@ -594,7 +594,7 @@ function WatchPageInner() {
             )}
 
             {/* ─── Control strip ─── */}
-            <div className="flex items-center justify-between flex-wrap gap-x-4 gap-y-3 mt-5">
+            <div className="flex items-center justify-between flex-wrap gap-x-4 gap-y-3 mt-12">
               <div className="flex items-center flex-wrap gap-2.5">
                 {isSeries && (
                   <>

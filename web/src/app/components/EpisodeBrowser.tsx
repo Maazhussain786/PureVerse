@@ -115,8 +115,8 @@ export default function EpisodeBrowser({
 
       {/* Season tabs */}
       {totalSeasons > 1 && (
-        <div className="relative mb-6 border-b border-white/10">
-          <div ref={tabsRef} className="drag-scroll flex gap-6 overflow-x-auto hide-scrollbar -mb-px px-2">
+        <div className="relative mb-8">
+          <div ref={tabsRef} className="drag-scroll flex gap-3 overflow-x-auto hide-scrollbar pb-2 px-2">
             {Array.from({ length: totalSeasons }, (_, i) => i + 1).map((num) => {
               const active = num === season;
               return (
@@ -124,14 +124,13 @@ export default function EpisodeBrowser({
                   key={num}
                   onClick={() => setSeason(num)}
                   aria-current={active ? "true" : undefined}
-                  className={`relative py-3 text-[15px] font-bold whitespace-nowrap transition-colors ${
-                    active ? "text-white" : "text-[var(--text-secondary)] hover:text-white"
+                  className={`relative px-5 py-2.5 text-[15px] font-bold whitespace-nowrap transition-all duration-300 rounded-full border ${
+                    active 
+                      ? "bg-[var(--accent-primary)]/10 text-white border-[var(--accent-primary)]/50 shadow-[0_0_15px_rgba(0,255,170,0.15)]" 
+                      : "bg-white/5 text-[var(--text-secondary)] border-transparent hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   Season {num}
-                  {active && (
-                    <span className="absolute left-0 right-0 bottom-0 h-[3px] bg-white rounded-t-full shadow-[0_0_10px_rgba(255,255,255,0.6)]" />
-                  )}
                 </button>
               );
             })}
@@ -144,10 +143,9 @@ export default function EpisodeBrowser({
         <LoadingSpinner />
       )}
 
-      {/* Episode list — a roomy vertical list (thumbnail + title + synopsis),
-          Netflix/Cineby style: easy to scan, readable text, big tap targets. */}
+      {/* Episode list — roomy vertical list with Netflix/Cineby style. */}
       {!loading && episodes.length > 0 && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-5 md:gap-6">
           {episodes.map((ep) => {
             const seasonNum = ep.seasonNumber || season;
             const progress = progressFor(ep.episodeNumber, seasonNum);
@@ -162,10 +160,10 @@ export default function EpisodeBrowser({
               <Link
                 key={ep.id}
                 href={href}
-                className={`group flex items-stretch gap-4 md:gap-5 p-2.5 md:p-3 rounded-2xl transition-all duration-200 ${
+                className={`group flex items-stretch gap-5 md:gap-6 p-3 md:p-4 rounded-2xl transition-all duration-300 ${
                   isCurrent
-                    ? "bg-[var(--accent-primary)]/10 ring-1 ring-[var(--accent-primary)]/50"
-                    : "bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-white/[0.06] hover:ring-[var(--accent-primary)]/40"
+                    ? "bg-[var(--accent-primary)]/10 ring-1 ring-[var(--accent-primary)]/50 shadow-[0_4px_30px_rgba(0,255,170,0.1)]"
+                    : "bg-white/[0.02] ring-1 ring-white/5 hover:bg-white/[0.04] hover:ring-[var(--accent-primary)]/30 hover:shadow-lg"
                 }`}
               >
                 {/* Thumbnail */}
