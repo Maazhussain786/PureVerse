@@ -32,7 +32,7 @@ class CreatePartySheet extends ConsumerStatefulWidget {
 class _CreatePartySheetState extends ConsumerState<CreatePartySheet> {
   late final TextEditingController _name;
   final _password = TextEditingController();
-  bool _isPublic = true;
+  bool _isPublic = false; // private by default — parties are invite/code-only
   bool _allowGuestControl = false;
   bool _autoWait = true;
   bool _busy = false;

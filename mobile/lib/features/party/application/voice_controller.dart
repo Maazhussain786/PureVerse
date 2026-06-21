@@ -55,6 +55,14 @@ class _Peer {
   final List<RTCIceCandidate> pendingIce = [];
   MediaStream? remoteStream;
   bool remoteDescSet = false;
+  // True once we've closed this connection — every native call re-checks this
+  // (and that the peer is still the current one) AFTER each await, so a
+  // teardown that races an in-flight signal can't fire a method on a closed
+  // RTCPeerConnection (a native abort that Dart try/catch can't catch).
+  bool closed = false;
+  // Guards the offer→answer sequence so two offers for the same peer can't both
+  // run setRemoteDescription on it (a classic native crash).
+  bool negotiating = false;
   _Peer(this.pc);
 }
 
@@ -83,7 +91,17 @@ class VoiceController extends StateNotifier<VoiceUiState> {
   // offers — which crashes libwebrtc natively and kills the app. The web client
   // never hits this because RTCPeerConnection there is created synchronously.
   final Map<String, Future<_Peer?>> _creating = {};
+  // ICE candidates that arrive before the peer exists (offer/answer still in
+  // flight). Buffered by peerId and drained into the peer once it's built, so
+  // we don't silently drop candidates and fail to connect.
+  final Map<String, List<RTCIceCandidate>> _earlyIce = {};
   List<Map<String, dynamic>> _lastVoiceState = const [];
+
+  /// A peer is safe to call native methods on only while it's still the current
+  /// connection for [peerId] and hasn't been closed. Re-checked after every
+  /// await in the signaling paths.
+  bool _alive(String peerId, _Peer peer) =>
+      mounted && !peer.closed && identical(_peers[peerId], peer);
 
   // ICE config is fetched from the backend (GET /rtc/ice) so a TURN relay can be
   // added server-side WITHOUT rebuilding the app. Cached for the session; falls
@@ -161,6 +179,7 @@ class VoiceController extends StateNotifier<VoiceUiState> {
       _closePeer(id);
     }
     _creating.clear();
+    _earlyIce.clear();
     await _stopLocal();
     state = const VoiceUiState();
   }
@@ -222,10 +241,12 @@ class VoiceController extends StateNotifier<VoiceUiState> {
 
   Future<void> _connectTo(String peerId) async {
     final peer = await _createPeer(peerId);
-    if (peer == null) return;
+    if (peer == null || !_alive(peerId, peer)) return;
     try {
       final offer = await peer.pc.createOffer({});
+      if (!_alive(peerId, peer)) return;
       await peer.pc.setLocalDescription(offer);
+      if (!_alive(peerId, peer)) return;
       _signal(peerId, {'kind': 'offer', 'sdp': offer.sdp, 'type': offer.type});
     } catch (_) {
       _closePeer(peerId); // negotiation failed — drop, don't crash the mesh
@@ -246,35 +267,54 @@ class VoiceController extends StateNotifier<VoiceUiState> {
     try {
       if (kind == 'offer') {
         if (!state.inVoice) return; // not listening
-        // Ignore a duplicate/renegotiation offer for a peer we already set up —
-        // re-applying a remote offer is a classic native crash.
+        // Ignore a duplicate offer for a peer we've already set up or are
+        // mid-negotiation with — re-applying a remote offer is a native crash.
         final already = _peers[from];
-        if (already != null && already.remoteDescSet) return;
+        if (already != null && (already.remoteDescSet || already.negotiating)) return;
         final peer = await _createPeer(from);
-        if (peer == null) return;
-        await peer.pc.setRemoteDescription(
-            RTCSessionDescription(data['sdp']?.toString(), data['type']?.toString()));
-        peer.remoteDescSet = true;
-        await _flushIce(peer);
-        final answer = await peer.pc.createAnswer({});
-        await peer.pc.setLocalDescription(answer);
-        _signal(from, {'kind': 'answer', 'sdp': answer.sdp, 'type': answer.type});
+        // After the await, bail if it was torn down / superseded, or another
+        // offer handler already claimed the negotiation.
+        if (peer == null || !_alive(from, peer) || peer.remoteDescSet || peer.negotiating) {
+          return;
+        }
+        peer.negotiating = true;
+        try {
+          await peer.pc.setRemoteDescription(
+              RTCSessionDescription(data['sdp']?.toString(), data['type']?.toString()));
+          if (!_alive(from, peer)) return;
+          peer.remoteDescSet = true;
+          await _flushIce(peer);
+          if (!_alive(from, peer)) return;
+          final answer = await peer.pc.createAnswer({});
+          if (!_alive(from, peer)) return;
+          await peer.pc.setLocalDescription(answer);
+          if (!_alive(from, peer)) return;
+          _signal(from, {'kind': 'answer', 'sdp': answer.sdp, 'type': answer.type});
+        } finally {
+          peer.negotiating = false;
+        }
       } else if (kind == 'answer') {
         final peer = _peers[from];
         if (peer == null || peer.remoteDescSet) return; // ignore stray/duplicate
         await peer.pc.setRemoteDescription(
             RTCSessionDescription(data['sdp']?.toString(), data['type']?.toString()));
+        if (!_alive(from, peer)) return;
         peer.remoteDescSet = true;
         await _flushIce(peer);
       } else if (kind == 'ice') {
-        final peer = _peers[from];
-        if (peer == null) return;
         final c = RTCIceCandidate(
           data['candidate']?.toString(),
           data['sdpMid']?.toString(),
           (data['sdpMLineIndex'] as num?)?.toInt(),
         );
+        final peer = _peers[from];
+        if (peer == null) {
+          // Peer is still being built — buffer so we don't drop the candidate.
+          (_earlyIce[from] ??= []).add(c);
+          return;
+        }
         if (peer.remoteDescSet) {
+          if (!_alive(from, peer)) return;
           await peer.pc.addCandidate(c);
         } else {
           peer.pendingIce.add(c); // buffer until remote description arrives
@@ -319,8 +359,13 @@ class VoiceController extends StateNotifier<VoiceUiState> {
     final peer = _Peer(pc);
     _peers[peerId] = peer;
 
+    // Adopt any ICE candidates that arrived before this peer existed.
+    final early = _earlyIce.remove(peerId);
+    if (early != null) peer.pendingIce.addAll(early);
+
     try {
       for (final track in local.getTracks()) {
+        if (peer.closed) break; // torn down mid-build — stop touching the pc
         await pc.addTrack(track, local);
       }
     } catch (_) {/* sender setup is best-effort */}
@@ -357,10 +402,14 @@ class VoiceController extends StateNotifier<VoiceUiState> {
   }
 
   Future<void> _flushIce(_Peer peer) async {
-    for (final c in peer.pendingIce) {
-      await peer.pc.addCandidate(c);
-    }
+    final pending = [...peer.pendingIce];
     peer.pendingIce.clear();
+    for (final c in pending) {
+      if (peer.closed) return; // don't add to a closed connection
+      try {
+        await peer.pc.addCandidate(c);
+      } catch (_) {/* a single bad candidate shouldn't kill the peer */}
+    }
   }
 
   void _applyDeafen(bool deafened) {
@@ -386,8 +435,10 @@ class VoiceController extends StateNotifier<VoiceUiState> {
   }
 
   void _closePeer(String peerId) {
+    _earlyIce.remove(peerId);
     final peer = _peers.remove(peerId);
     if (peer == null) return;
+    peer.closed = true; // set BEFORE close so in-flight signals bail via _alive
     try {
       peer.pc.onIceCandidate = null;
       peer.pc.onTrack = null;
@@ -417,6 +468,7 @@ class VoiceController extends StateNotifier<VoiceUiState> {
       _closePeer(id);
     }
     _creating.clear();
+    _earlyIce.clear();
     _stopLocal();
     super.dispose();
   }
