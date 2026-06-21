@@ -35,13 +35,6 @@ interface MediaDetails {
 
 const PREF_SERVER_KEY = (type: string) => `pureverse_server_${type}`;
 
-// Sandbox tokens that let the embed play + go fullscreen while blocking the
-// popup/redirect ads (no allow-popups, no allow-top-navigation). A few
-// ad-heavy providers detect this and show "Please Disable Sandbox" — the
-// Ad-Block toggle removes the attribute for those.
-const PLAYER_SANDBOX =
-  "allow-same-origin allow-scripts allow-forms allow-presentation allow-orientation-lock allow-pointer-lock";
-
 function WatchPageInner() {
   const params = useParams();
   const router = useRouter();
@@ -441,9 +434,8 @@ function WatchPageInner() {
             key={`${activeSource.url}-open`}
             src={activeSource.url}
             className="w-full h-full border-none"
-            allowFullScreen={true}
+            allowFullScreen
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture; display-capture"
-            sandbox={PLAYER_SANDBOX}
             referrerPolicy="origin"
           />
         )}
