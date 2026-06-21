@@ -496,7 +496,7 @@ function WatchPageInner() {
               key={`${activeSource.url}-open`}
               src={activeSource.url}
               className="w-full h-full border-none"
-              allowFullScreen
+              allowFullScreen={true}
               allow="autoplay; fullscreen; encrypted-media; picture-in-picture; display-capture"
               referrerPolicy="origin"
             />
@@ -510,43 +510,14 @@ function WatchPageInner() {
               onClick={toggleFullscreen}
               aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
-              className="group absolute bottom-0 right-0 z-30 flex items-center justify-center cursor-pointer bg-transparent border-0"
-              style={{ width: "54px", height: "48px" }}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="opacity-80 transition-opacity group-hover:opacity-100"
-                style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.9))" }}
-              >
-                {isFullscreen ? (
-                  <>
-                    <path d="M8 3v3a2 2 0 0 1-2 2H3" />
-                    <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-                    <path d="M3 16h3a2 2 0 0 1 2 2v3" />
-                    <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
-                  </>
-                ) : (
-                  <>
-                    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-                    <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-                    <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-                    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-                  </>
-                )}
-              </svg>
-            </button>
+              className="absolute bottom-0 right-0 z-30 cursor-pointer opacity-0"
+              style={{ width: "60px", height: "55px" }}
+            />
           </>
         )}
       </div>
 
-      <div className="watch-layout-container px-3 md:px-6 pt-24 pb-12">
+      <div className="watch-layout-container px-3 md:px-6 pt-32 pb-12">
         <div className="watch-theater-layout">
           <div className="flex-1 min-w-0">
             {tipOpen && (
