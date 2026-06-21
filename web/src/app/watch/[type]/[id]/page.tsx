@@ -69,6 +69,66 @@ function WatchPageInner() {
   const [tipOpen, setTipOpen] = useState(true);
   const lastProgressSync = useRef(0);
   const pendingEpRef = useRef<number | null>(null); // episode we're syncing the player to
+  const playerStageRef = useRef<HTMLDivElement>(null);
+  const playerFrameRef = useRef<HTMLIFrameElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // ─── Fullscreen ───
+  // Cross-origin players (Videasy/VidSrc/…) ship their own fullscreen button,
+  // but it's unreliable across providers. We overlay our OWN control in the
+  // bottom-right corner — right where the native icon sits — and drive the
+  // browser Fullscreen API ourselves, which is rock-solid. A cross-origin
+  // iframe swallows the parent's mouse events everywhere it covers, so this
+  // corner overlay is the only reliable place to catch the click over the
+  // video. We fullscreen the STAGE (so the overlay stays on top and can toggle
+  // back out); if a browser refuses to fullscreen a plain element (e.g. iOS) we
+  // fall back to the iframe itself.
+  const requestFs = useCallback((el: Element | null): boolean => {
+    if (!el) return false;
+    const e = el as Element & { webkitRequestFullscreen?: () => Promise<void> | void };
+    const req = el.requestFullscreen?.bind(el) || e.webkitRequestFullscreen?.bind(e);
+    if (!req) return false;
+    try {
+      const r = req();
+      if (r && typeof (r as Promise<void>).catch === "function") {
+        (r as Promise<void>).catch(() => {});
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element;
+      webkitExitFullscreen?: () => Promise<void> | void;
+    };
+    const current = document.fullscreenElement || doc.webkitFullscreenElement;
+    if (current) {
+      const exit = document.exitFullscreen?.bind(document) || doc.webkitExitFullscreen?.bind(doc);
+      try { exit?.(); } catch { /* ignore */ }
+      return;
+    }
+    // Prefer the stage (overlay stays clickable in fullscreen); fall back to the
+    // iframe element if the browser won't fullscreen a plain div.
+    if (!requestFs(playerStageRef.current)) requestFs(playerFrameRef.current);
+  }, [requestFs]);
+
+  // Keep the icon (enter ⇄ exit) in sync with the real fullscreen state,
+  // including when the user leaves fullscreen via Esc.
+  useEffect(() => {
+    const sync = () => {
+      const d = document as Document & { webkitFullscreenElement?: Element };
+      setIsFullscreen(Boolean(document.fullscreenElement || d.webkitFullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", sync);
+    document.addEventListener("webkitfullscreenchange", sync);
+    return () => {
+      document.removeEventListener("fullscreenchange", sync);
+      document.removeEventListener("webkitfullscreenchange", sync);
+    };
+  }, []);
 
   // ─── Playback tip (dismissible, remembered) ───
   useEffect(() => {
@@ -397,7 +457,7 @@ function WatchPageInner() {
       <link rel="preconnect" href="https://vidfast.pro" />
       <link rel="dns-prefetch" href="https://megaplay.buzz" />
       {activeOrigin && <link rel="preconnect" href={activeOrigin} />}
-      <div className="w-full bg-black shadow-[0_8px_50px_rgba(0,0,0,0.85)]" style={{ aspectRatio: '16/9', maxHeight: 'calc(100vh - 80px)' }}>
+      <div ref={playerStageRef} className="player-stage relative w-full bg-black shadow-[0_8px_50px_rgba(0,0,0,0.85)]" style={{ aspectRatio: '16/9', maxHeight: 'calc(100vh - 80px)' }}>
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="flex flex-col items-center gap-4">
@@ -430,14 +490,59 @@ function WatchPageInner() {
         )}
 
         {!loading && !error && activeSource && (
-          <iframe
-            key={`${activeSource.url}-open`}
-            src={activeSource.url}
-            className="w-full h-full border-none"
-            allowFullScreen
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture; display-capture"
-            referrerPolicy="origin"
-          />
+          <>
+            <iframe
+              ref={playerFrameRef}
+              key={`${activeSource.url}-open`}
+              src={activeSource.url}
+              className="w-full h-full border-none"
+              allowFullScreen
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture; display-capture"
+              referrerPolicy="origin"
+            />
+            {/* Fullscreen control overlaid on the player's own fullscreen icon
+                (bottom-right). A cross-origin iframe swallows the parent's
+                clicks everywhere it covers, so this corner overlay is the one
+                reliable place to catch the gesture — and it drives the browser
+                Fullscreen API directly, so it works on every provider. */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
+              className="group absolute bottom-0 right-0 z-30 flex items-center justify-center cursor-pointer bg-transparent border-0"
+              style={{ width: "54px", height: "48px" }}
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="opacity-80 transition-opacity group-hover:opacity-100"
+                style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.9))" }}
+              >
+                {isFullscreen ? (
+                  <>
+                    <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+                    <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+                    <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+                    <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                    <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                    <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                  </>
+                )}
+              </svg>
+            </button>
+          </>
         )}
       </div>
 

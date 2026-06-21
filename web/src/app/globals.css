@@ -258,6 +258,22 @@ body {
   margin-right: auto;
 }
 
+/* Player fullscreen: the stage is normally constrained to 16/9 + a max-height
+   inline style for the page layout. In fullscreen, override those so it fills
+   the whole screen (the embedded iframe is w-full/h-full, so it follows). */
+.player-stage:fullscreen,
+.player-stage:-webkit-full-screen {
+  max-height: none !important;
+  aspect-ratio: auto !important;
+  width: 100vw;
+  height: 100vh;
+}
+.player-stage:fullscreen iframe,
+.player-stage:-webkit-full-screen iframe {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .watch-theater-layout {
   display: flex;
   flex-direction: column;
