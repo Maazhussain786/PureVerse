@@ -74,13 +74,6 @@ function WatchPageInner() {
   const [partyOpen, setPartyOpen] = useState(false);
   const [shared, setShared] = useState(false);
   const [tipOpen, setTipOpen] = useState(true);
-  // Scroll-guard: a cross-origin player iframe swallows mouse-wheel events, so
-  // the page won't scroll while the cursor is over it. We arm a transparent
-  // overlay (which lets the wheel scroll the page) only AFTER the cursor has
-  // left the player once — so the very first click still lands straight on the
-  // provider's play button (no extra click, no muted-autoplay), and afterwards
-  // hovering the player scrolls the page; one click re-enters control mode.
-  const [scrollGuard, setScrollGuard] = useState(false);
   const lastProgressSync = useRef(0);
   const pendingEpRef = useRef<number | null>(null); // episode we're syncing the player to
 
@@ -124,7 +117,6 @@ function WatchPageInner() {
       setLoading(true);
       setError(false);
       setStreamData(null);
-      setScrollGuard(false); // fresh episode/title → start in control mode
       try {
         const res = await fetch(
           `${API_BASE}/media/stream/${type}/${id}?season=${season}&episode=${episode}`
@@ -165,7 +157,6 @@ function WatchPageInner() {
 
   const selectServer = useCallback(
     (idx: number) => {
-      setScrollGuard(false); // new source → start in control mode
       setActiveSourceIdx(idx);
       const server = streamData?.sources[idx]?.server;
       if (server) {
@@ -180,7 +171,6 @@ function WatchPageInner() {
   const tryNextServer = useCallback(() => {
     const count = streamData?.sources?.length ?? 0;
     if (count === 0) return;
-    setScrollGuard(false); // new source → start in control mode
     setActiveSourceIdx((idx) => (idx + 1) % count);
   }, [streamData]);
 
@@ -414,12 +404,53 @@ function WatchPageInner() {
       <link rel="preconnect" href="https://vidfast.pro" />
       <link rel="dns-prefetch" href="https://megaplay.buzz" />
       {activeOrigin && <link rel="preconnect" href={activeOrigin} />}
-      <div className="watch-layout-container px-3 md:px-6 pt-3 md:pt-5 pb-12">
-        {/* ─── Theater: full-width player (episodes live inside the player now) ─── */}
+      <div className="w-full relative bg-black shadow-[0_8px_50px_rgba(0,0,0,0.85)] z-10" style={{ aspectRatio: '16/9', maxHeight: 'calc(100vh - 80px)' }}>
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-[var(--text-muted)] font-medium">
+                Resolving stream sources…
+              </p>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black">
+            <div className="text-center px-6">
+              <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 8v4M12 16h.01" />
+                </svg>
+              </div>
+              <p className="text-lg font-semibold text-white mb-2">Stream Unavailable</p>
+              <p className="text-sm text-[var(--text-muted)] mb-5 max-w-sm">
+                This could be temporary. Try again in a moment or browse something else.
+              </p>
+              <Link href={`/details/${type}/${id}`} className="btn-primary">
+                Back to Details
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {!loading && !error && activeSource && (
+          <iframe
+            key={`${activeSource.url}-open`}
+            src={activeSource.url}
+            className="w-full h-full border-none"
+            allowFullScreen={true}
+            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+            referrerPolicy="origin"
+          />
+        )}
+      </div>
+
+      <div className="watch-layout-container px-3 md:px-6 pt-6 pb-12">
         <div className="watch-theater-layout">
-          {/* Player column */}
           <div className="flex-1 min-w-0">
-            {/* ─── Pre-play tip: switch servers on issues ─── */}
             {tipOpen && (
               <div
                 className="flex items-start gap-3 rounded-2xl border border-[var(--accent-primary)]/25 bg-[var(--accent-primary)]/[0.07] mb-3"
@@ -450,103 +481,6 @@ function WatchPageInner() {
                 </button>
               </div>
             )}
-            <div
-              className="watch-player-stage rounded-2xl bg-black ring-1 ring-white/[0.08] shadow-[0_8px_50px_rgba(0,0,0,0.85)]"
-              onMouseLeave={() => activeSource && setScrollGuard(true)}
-            >
-              {loading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black rounded-2xl">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
-                    <p className="text-sm text-[var(--text-muted)] font-medium">
-                      Resolving stream sources…
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {error && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black rounded-2xl">
-                  <div className="text-center px-6">
-                    <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 8v4M12 16h.01" />
-                      </svg>
-                    </div>
-                    <p className="text-lg font-semibold text-white mb-2">Stream Unavailable</p>
-                    <p className="text-sm text-[var(--text-muted)] mb-5 max-w-sm">
-                      This could be temporary. Try again in a moment or browse something else.
-                    </p>
-                    <Link href={`/details/${type}/${id}`} className="btn-primary">
-                      Back to Details
-                    </Link>
-                  </div>
-                </div>
-              )}
-
-              {!loading && !error && activeSource && (
-                <>
-                  <iframe
-                    key={`${activeSource.url}-open`}
-                    src={activeSource.url}
-                    className="w-full h-full border-none rounded-2xl"
-                    allowFullScreen
-                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                    referrerPolicy="origin"
-                  />
-                  {/* Back button (top-left) — like cineby. It lives in the page,
-                      not the iframe, so when the player's OWN fullscreen button
-                      takes the iframe fullscreen, this button disappears. */}
-                  <button
-                    onClick={() => router.back()}
-                    title="Back"
-                    aria-label="Back"
-                    className="absolute top-3 left-3 z-20 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-black/55 backdrop-blur-md border border-white/15 hover:bg-black/80 transition-all duration-200"
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="m15 18-6-6 6-6" />
-                    </svg>
-                    Back
-                  </button>
-                  {/* Region-blocked iframes render blank without firing
-                      onError — the recovery control must always be reachable. */}
-                  {(streamData?.sources.length ?? 0) > 1 && (
-                    <button
-                      onClick={tryNextServer}
-                      title="Video blank or won't play? Jump to the next server (S)"
-                      className="absolute top-3 right-3 z-20 flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-black/60 backdrop-blur-md border border-[var(--accent-primary)]/40 hover:bg-[var(--accent-primary)] hover:text-black transition-all duration-300 shadow-[0_0_15px_var(--accent-glow)]"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 2v6h6" />
-                        <path d="M21 12A9 9 0 0 0 6 5.3L3 8" />
-                        <path d="M21 22v-6h-6" />
-                        <path d="M3 12a9 9 0 0 0 15 6.7l3-2.7" />
-                      </svg>
-                      Switch Server
-                    </button>
-                  )}
-
-                  {/* Scroll-guard overlay: armed once the cursor has left the
-                      player, it lets the mouse wheel scroll the page instead of
-                      being swallowed by the iframe. A single click hands control
-                      back to the player. Transparent so the video stays visible. */}
-                  {scrollGuard && (
-                    <button
-                      type="button"
-                      onClick={() => setScrollGuard(false)}
-                      aria-label="Click to control the player"
-                      className="group absolute inset-0 z-10 flex items-end justify-center bg-transparent rounded-2xl cursor-pointer"
-                    >
-                      <span className="pointer-events-none mb-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-[11px] font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                        Click to control · scroll to browse
-                      </span>
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
 
             {/* ─── Control strip ─── */}
             <div className="flex items-center justify-between flex-wrap gap-x-4 gap-y-3 mt-5">
