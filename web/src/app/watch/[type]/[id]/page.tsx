@@ -404,7 +404,7 @@ function WatchPageInner() {
       <link rel="preconnect" href="https://vidfast.pro" />
       <link rel="dns-prefetch" href="https://megaplay.buzz" />
       {activeOrigin && <link rel="preconnect" href={activeOrigin} />}
-      <div className="w-full relative bg-black shadow-[0_8px_50px_rgba(0,0,0,0.85)] z-10" style={{ aspectRatio: '16/9', maxHeight: 'calc(100vh - 80px)' }}>
+      <div className="w-full bg-black shadow-[0_8px_50px_rgba(0,0,0,0.85)]" style={{ aspectRatio: '16/9', maxHeight: 'calc(100vh - 80px)' }}>
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="flex flex-col items-center gap-4">
@@ -441,14 +441,15 @@ function WatchPageInner() {
             key={`${activeSource.url}-open`}
             src={activeSource.url}
             className="w-full h-full border-none"
-            allowFullScreen
+            allowFullScreen={true}
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture; display-capture"
+            sandbox={PLAYER_SANDBOX}
             referrerPolicy="origin"
           />
         )}
       </div>
 
-      <div className="watch-layout-container px-3 md:px-6 pt-16 pb-12">
+      <div className="watch-layout-container px-3 md:px-6 pt-24 pb-12">
         <div className="watch-theater-layout">
           <div className="flex-1 min-w-0">
             {tipOpen && (
