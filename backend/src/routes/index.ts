@@ -55,7 +55,9 @@ import {
   getRoomMeta,
   inviteToParty,
 } from '../controllers/partyController';
+import { listAllUsers } from '../controllers/adminController';
 import { requireAuth } from '../middleware/auth';
+import { requireAdmin } from '../middleware/adminAuth';
 
 const router = Router();
 
@@ -127,5 +129,8 @@ router.get('/rtc/ice', getIceServers); // WebRTC ICE config (STUN + optional TUR
 router.get('/party/rooms', listPublicRooms);
 router.get('/party/rooms/:code', getRoomMeta);
 router.post('/party/invite', requireAuth, inviteToParty);
+
+// ─── Admin (owner-only, gated by ADMIN_TOKEN) ─────────────
+router.get('/admin/users', requireAdmin, listAllUsers);
 
 export default router;
