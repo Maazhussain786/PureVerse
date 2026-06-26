@@ -112,7 +112,7 @@ function TokenGate({
 }) {
   const [value, setValue] = useState("");
   return (
-    <main className="min-h-screen pt-40 px-6 flex flex-col items-center text-center">
+    <main className="min-h-screen px-6 flex flex-col items-center justify-center text-center" style={{ paddingTop: "80px" }}>
       <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-[var(--accent-primary)]/20 to-[var(--accent-teal)]/10 border border-[var(--accent-primary)]/20 flex items-center justify-center mb-6">
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="1.5">
           <rect x="3" y="11" width="18" height="11" rx="2" />
@@ -262,7 +262,7 @@ export default function AdminPage() {
   // ─── Gate ───
   if (!booted) {
     return (
-      <main className="min-h-screen pt-40 flex justify-center">
+      <main className="min-h-screen flex items-center justify-center">
         <div className="w-10 h-10 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
       </main>
     );
@@ -275,8 +275,8 @@ export default function AdminPage() {
 
   return (
     <main
-      className="min-h-screen pt-40 pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 max-w-[1280px] mx-auto"
-      style={{ paddingLeft: "40px", paddingRight: "40px" }}
+      className="min-h-screen pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 max-w-[1280px] mx-auto"
+      style={{ paddingTop: "140px", paddingLeft: "40px", paddingRight: "40px" }}
     >
       {/* ─── Header ─── */}
       <div className="flex items-end justify-between gap-4 mb-6 flex-wrap" style={{ gap: "16px", marginBottom: "24px" }}>
