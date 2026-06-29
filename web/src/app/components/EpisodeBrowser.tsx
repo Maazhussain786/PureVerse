@@ -103,7 +103,7 @@ export default function EpisodeBrowser({
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-3 mb-8">
         <div className="w-1.5 h-7 rounded-full bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)]" />
         <h2 className="text-xl md:text-[26px] font-bold text-white tracking-tight" style={{ fontFamily: "var(--font-space)" }}>
           Episodes
@@ -124,11 +124,12 @@ export default function EpisodeBrowser({
                   key={num}
                   onClick={() => setSeason(num)}
                   aria-current={active ? "true" : undefined}
-                  className={`relative px-7 py-3 text-[15px] md:text-[16px] font-bold whitespace-nowrap transition-all duration-300 rounded-full border shadow-sm ${
+                  className={`relative text-[15px] md:text-[16px] font-bold whitespace-nowrap transition-colors duration-300 rounded-full border shadow-sm ${
                     active 
-                      ? "bg-[var(--accent-primary)] text-black border-[var(--accent-primary)] shadow-[0_4px_20px_rgba(163,230,53,0.3)] scale-105" 
-                      : "bg-white/5 text-[var(--text-secondary)] border-white/10 hover:bg-white/15 hover:text-white hover:border-white/25 hover:shadow-md hover:-translate-y-0.5"
+                      ? "bg-[var(--accent-primary)] text-black border-[var(--accent-primary)] shadow-[0_4px_20px_rgba(163,230,53,0.3)]" 
+                      : "bg-white/5 text-[var(--text-secondary)] border-white/10 hover:bg-white/15 hover:text-white hover:border-white/25"
                   }`}
+                  style={{ padding: "10px 24px" }}
                 >
                   Season {num}
                 </button>
