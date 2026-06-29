@@ -173,7 +173,7 @@ export default function Home() {
 
       {/* Content Rows — premium OTT spacing (96px from hero, 64/32/20 padding) */}
       <div
-        className="relative z-10 px-5 md:px-8 lg:px-16 max-w-screen-2xl mx-auto"
+        className="relative z-10 px-5 md:px-8 lg:px-16 w-full mx-auto"
         style={{ paddingTop: "var(--space-hero-to-section)" }}
       >
 

@@ -198,7 +198,7 @@ function CategoryHero({ items, heading, tagline }: { items: any[]; heading: stri
       />
 
       <div className="absolute inset-0 flex items-end">
-        <div className="w-full max-w-screen-2xl mx-auto px-5 md:px-10 lg:px-16 pb-10 md:pb-14">
+        <div className="w-full w-full mx-auto px-5 md:px-10 lg:px-16 pb-10 md:pb-14">
           {/* Brand + section eyebrow */}
           <div className="flex items-center gap-2.5 mb-3">
             <img src="/logos/Small_logo.png" alt="" className="w-6 h-6 rounded-md object-contain" />
@@ -318,7 +318,7 @@ export default function CategoryBrowser({ category }: { category: Category }) {
 
       {/* ─── Sticky filter bar ─── */}
       <div className="sticky top-[68px] z-30 bg-[rgba(9,9,12,0.82)] backdrop-blur-2xl backdrop-saturate-150 border-b border-white/[0.05]">
-        <div className="max-w-screen-2xl mx-auto px-5 md:px-10 lg:px-16 py-3 flex items-center gap-3">
+        <div className="w-full mx-auto px-5 md:px-10 lg:px-16 py-3 flex items-center gap-3">
           {/* Genre chips (drag-scrollable) */}
           <div ref={chipsRef} className="drag-scroll flex items-center gap-3 overflow-x-auto hide-scrollbar flex-1 min-w-0">
             <button
@@ -368,7 +368,7 @@ export default function CategoryBrowser({ category }: { category: Category }) {
       </div>
 
       {/* ─── Content ─── */}
-      <div className="max-w-screen-2xl mx-auto px-5 md:px-10 lg:px-16 pt-10 pb-20">
+      <div className="w-full mx-auto px-5 md:px-10 lg:px-16 pt-10 pb-20">
         {isGridMode ? (
           /* ── Narrowed: responsive grid + Load More ── */
           <section>

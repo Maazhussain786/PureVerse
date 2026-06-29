@@ -183,7 +183,7 @@ export default function Navbar() {
             : "bg-gradient-to-b from-black/80 via-black/40 to-transparent"
         }`}
       >
-        <div className="relative max-w-screen-2xl mx-auto px-5 md:px-8 lg:px-16 h-[68px] flex items-center justify-between gap-4">
+        <div className="relative w-full mx-auto px-5 md:px-8 lg:px-16 h-[68px] flex items-center justify-between gap-4">
           {/* Left: Logo */}
           <Link href="/" className="flex items-center group z-10">
             {/* eslint-disable-next-line @next/next/no-img-element */}

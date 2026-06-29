@@ -275,7 +275,7 @@ export default function AdminPage() {
 
   return (
     <main
-      className="min-h-screen pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 max-w-[1280px] mx-auto"
+      className="min-h-screen pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 w-full mx-auto"
       style={{ paddingTop: "140px", paddingLeft: "40px", paddingRight: "40px" }}
     >
       {/* ─── Header ─── */}

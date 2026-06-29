@@ -107,7 +107,7 @@ export default function PartyLobbyPage() {
 
   return (
     <main 
-      className="min-h-screen pt-24 pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 max-w-[1400px] mx-auto"
+      className="min-h-screen pt-24 pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 w-full mx-auto"
       style={{ paddingTop: "120px" }}
     >
       {/* ─── Hero ─── */}

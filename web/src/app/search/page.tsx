@@ -172,7 +172,7 @@ function SearchClient() {
   const hasQuery = !!query.trim();
 
   return (
-    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 max-w-[1600px] mx-auto" style={{ paddingTop: "110px", paddingBottom: "110px", paddingLeft: "20px", paddingRight: "20px" }}>
+    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 w-full mx-auto" style={{ paddingTop: "110px", paddingBottom: "110px", paddingLeft: "20px", paddingRight: "20px" }}>
       {/* ─── Search input ─── */}
       <div className="max-w-3xl mx-auto mb-8">
         <div className="relative group">

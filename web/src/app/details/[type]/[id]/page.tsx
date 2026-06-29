@@ -245,7 +245,7 @@ export default function DetailsPage() {
         </div>
 
         {/* ─── Content ─── */}
-        <div className="relative z-10 px-5 md:px-10 lg:px-16 max-w-screen-2xl w-full">
+        <div className="relative z-10 px-5 md:px-10 lg:px-16 w-full w-full">
           <div className="max-w-3xl">
             {/* Title */}
             <h1 
@@ -343,7 +343,7 @@ export default function DetailsPage() {
         </div>
       </div>
 
-      <div className="relative z-10 px-5 md:px-10 lg:px-16 max-w-screen-2xl mx-auto mt-16 md:mt-24" style={{ marginTop: "96px" }}>
+      <div className="relative z-10 px-5 md:px-10 lg:px-16 w-full mx-auto mt-16 md:mt-24" style={{ marginTop: "96px" }}>
         {/* ─── Cast ─── */}
         {media.cast && media.cast.length > 0 && (
           <section className="mt-14">

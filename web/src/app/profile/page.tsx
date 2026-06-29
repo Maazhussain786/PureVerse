@@ -164,7 +164,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 max-w-[1200px] mx-auto" style={{ paddingTop: "120px", paddingBottom: "100px", paddingLeft: "40px", paddingRight: "40px" }}>
+    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-5 md:px-10 lg:px-14 w-full mx-auto" style={{ paddingTop: "120px", paddingBottom: "100px", paddingLeft: "40px", paddingRight: "40px" }}>
       {/* ─── Identity card ─── */}
       <section className="relative overflow-hidden rounded-3xl border border-white/[0.07] mb-8">
         <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-primary)]/[0.12] via-transparent to-[var(--accent-teal)]/[0.08]" />

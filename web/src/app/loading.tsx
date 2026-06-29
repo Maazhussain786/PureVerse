@@ -5,7 +5,7 @@ export default function Loading() {
   return (
     <main className="min-h-screen">
       <HeroSkeleton />
-      <div className="relative z-10 -mt-8 px-4 md:px-8 max-w-[1600px] mx-auto">
+      <div className="relative z-10 -mt-8 px-4 md:px-8 w-full mx-auto">
         <div className="flex flex-col lg:flex-row gap-6 xl:gap-10">
           <div className="flex-1 min-w-0 flex flex-col gap-8">
             <MediaRowSkeleton />
