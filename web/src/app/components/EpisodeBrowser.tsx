@@ -103,7 +103,7 @@ export default function EpisodeBrowser({
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex items-center gap-3 mb-8" style={{ marginBottom: "28px" }}>
         <div className="w-1.5 h-7 rounded-full bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)]" />
         <h2 className="text-xl md:text-[26px] font-bold text-white tracking-tight" style={{ fontFamily: "var(--font-space)" }}>
           Episodes
@@ -115,8 +115,8 @@ export default function EpisodeBrowser({
 
       {/* Season tabs */}
       {totalSeasons > 1 && (
-        <div className="relative mb-16">
-          <div ref={tabsRef} className="drag-scroll flex gap-4 overflow-x-auto hide-scrollbar pb-3 px-2 -mx-2">
+        <div className="relative mb-16" style={{ marginBottom: "48px" }}>
+          <div ref={tabsRef} className="drag-scroll flex gap-4 overflow-x-auto hide-scrollbar pb-3 px-2 -mx-2" style={{ gap: "16px" }}>
             {Array.from({ length: totalSeasons }, (_, i) => i + 1).map((num) => {
               const active = num === season;
               return (
@@ -166,9 +166,13 @@ export default function EpisodeBrowser({
                     ? "bg-[var(--accent-primary)]/[0.08] border-[var(--accent-primary)]/40 shadow-[0_8px_30px_rgba(163,230,53,0.15)]"
                     : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/20 hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)] hover:-translate-y-1"
                 }`}
+                style={{ padding: "24px", gap: "28px" }}
               >
                 {/* Thumbnail */}
-                <div className="relative flex-none w-full sm:w-[220px] md:w-[280px] aspect-video rounded-xl overflow-hidden bg-[var(--bg-elevated)] ring-1 ring-white/10 group-hover:ring-white/20 transition-all duration-400 shadow-inner">
+                <div 
+                  className="relative flex-none w-full sm:w-[220px] md:w-[280px] aspect-video rounded-xl overflow-hidden bg-[var(--bg-elevated)] ring-1 ring-white/10 group-hover:ring-white/20 transition-all duration-400 shadow-inner"
+                  style={{ minWidth: "260px", maxWidth: "320px", flexShrink: 0 }}
+                >
                   {ep.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
