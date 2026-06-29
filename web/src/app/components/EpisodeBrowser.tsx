@@ -115,8 +115,8 @@ export default function EpisodeBrowser({
 
       {/* Season tabs */}
       {totalSeasons > 1 && (
-        <div className="relative mb-8">
-          <div ref={tabsRef} className="drag-scroll flex gap-3 overflow-x-auto hide-scrollbar pb-2 px-2">
+        <div className="relative mb-10">
+          <div ref={tabsRef} className="drag-scroll flex gap-4 overflow-x-auto hide-scrollbar pb-3 px-2 -mx-2">
             {Array.from({ length: totalSeasons }, (_, i) => i + 1).map((num) => {
               const active = num === season;
               return (
@@ -124,10 +124,10 @@ export default function EpisodeBrowser({
                   key={num}
                   onClick={() => setSeason(num)}
                   aria-current={active ? "true" : undefined}
-                  className={`relative px-5 py-2.5 text-[15px] font-bold whitespace-nowrap transition-all duration-300 rounded-full border ${
+                  className={`relative px-7 py-3 text-[15px] md:text-[16px] font-bold whitespace-nowrap transition-all duration-300 rounded-full border shadow-sm ${
                     active 
-                      ? "bg-[var(--accent-primary)]/10 text-white border-[var(--accent-primary)]/50 shadow-[0_0_15px_rgba(0,255,170,0.15)]" 
-                      : "bg-white/5 text-[var(--text-secondary)] border-transparent hover:bg-white/10 hover:text-white"
+                      ? "bg-[var(--accent-primary)] text-black border-[var(--accent-primary)] shadow-[0_4px_20px_rgba(163,230,53,0.3)] scale-105" 
+                      : "bg-white/5 text-[var(--text-secondary)] border-white/10 hover:bg-white/15 hover:text-white hover:border-white/25 hover:shadow-md hover:-translate-y-0.5"
                   }`}
                 >
                   Season {num}
@@ -160,35 +160,35 @@ export default function EpisodeBrowser({
               <Link
                 key={ep.id}
                 href={href}
-                className={`group flex items-stretch gap-5 md:gap-6 p-3 md:p-4 rounded-2xl transition-all duration-300 ${
+                className={`group flex flex-col sm:flex-row items-stretch gap-5 md:gap-8 p-4 md:p-5 rounded-2xl md:rounded-3xl transition-all duration-400 ease-out border ${
                   isCurrent
-                    ? "bg-[var(--accent-primary)]/10 ring-1 ring-[var(--accent-primary)]/50 shadow-[0_4px_30px_rgba(0,255,170,0.1)]"
-                    : "bg-white/[0.02] ring-1 ring-white/5 hover:bg-white/[0.04] hover:ring-[var(--accent-primary)]/30 hover:shadow-lg"
+                    ? "bg-[var(--accent-primary)]/[0.08] border-[var(--accent-primary)]/40 shadow-[0_8px_30px_rgba(163,230,53,0.15)]"
+                    : "bg-white/[0.02] border-white/5 hover:bg-white/[0.04] hover:border-white/20 hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)] hover:-translate-y-1"
                 }`}
               >
                 {/* Thumbnail */}
-                <div className="relative flex-none w-[136px] sm:w-[180px] md:w-[230px] aspect-video rounded-xl overflow-hidden bg-[var(--bg-elevated)]">
+                <div className="relative flex-none w-full sm:w-[220px] md:w-[280px] aspect-video rounded-xl overflow-hidden bg-[var(--bg-elevated)] ring-1 ring-white/10 group-hover:ring-white/20 transition-all duration-400 shadow-inner">
                   {ep.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={proxyImage(ep.thumbnailUrl)}
                       alt={ep.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                       loading="lazy"
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]">
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="opacity-30">
+                    <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)] bg-gradient-to-br from-white/5 to-transparent">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" className="opacity-20">
                         <polygon points="5 3 19 12 5 21 5 3" />
                       </svg>
                     </div>
                   )}
 
                   {/* Play overlay on hover */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <span className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-[var(--accent-primary)] flex items-center justify-center text-black scale-90 group-hover:scale-100 transition-transform shadow-[0_0_20px_var(--accent-glow)]">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5">
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 backdrop-blur-[2px]">
+                    <span className="w-14 h-14 rounded-full bg-[var(--accent-primary)] flex items-center justify-center text-black scale-90 group-hover:scale-100 transition-transform duration-300 shadow-[0_0_24px_var(--accent-glow)]">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="ml-1">
                         <polygon points="6 4 20 12 6 20 6 4" />
                       </svg>
                     </span>
@@ -196,47 +196,56 @@ export default function EpisodeBrowser({
 
                   {/* Resume progress */}
                   {inProgress && (
-                    <div className="absolute bottom-0 inset-x-0 h-1 bg-black/50">
-                      <div className="h-full bg-[var(--accent-primary)] shadow-[0_0_8px_var(--accent-glow)]" style={{ width: `${progress}%` }} />
+                    <div className="absolute bottom-0 inset-x-0 h-1.5 bg-black/60">
+                      <div className="h-full bg-[var(--accent-primary)] shadow-[0_0_10px_var(--accent-glow)] rounded-r-full" style={{ width: `${progress}%` }} />
                     </div>
                   )}
                 </div>
 
                 {/* Info */}
-                <div className="flex-1 min-w-0 flex flex-col justify-center py-1 pr-1.5">
-                  <div className="flex items-center gap-2.5 mb-1.5">
-                    <span className="text-lg md:text-2xl font-extrabold text-[var(--accent-primary)] leading-none tabular-nums">
+                <div className="flex-1 min-w-0 flex flex-col justify-center py-1 sm:pr-2">
+                  <div className="flex items-start gap-4 mb-2">
+                    <span className="text-3xl md:text-4xl font-black text-white/20 group-hover:text-white/40 transition-colors tabular-nums mt-[-2px] tracking-tighter">
                       {ep.episodeNumber}
                     </span>
-                    <h3 className={`flex-1 min-w-0 text-[15px] md:text-[17px] font-bold truncate ${isCurrent ? "text-[var(--accent-primary)]" : "text-white"}`}>
-                      {ep.title || `Episode ${ep.episodeNumber}`}
-                    </h3>
-                    {isCurrent ? (
-                      <span className="flex-none flex items-center gap-1.5 text-[11px] font-bold text-[var(--accent-primary)]">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)] animate-pulse" />
-                        <span className="hidden sm:inline">Now Playing</span>
-                      </span>
-                    ) : watched ? (
-                      <span className="flex-none flex items-center gap-1 text-[11px] font-bold text-[var(--accent-primary)]">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-                        <span className="hidden sm:inline">Watched</span>
-                      </span>
-                    ) : inProgress ? (
-                      <span className="flex-none text-[12px] font-bold text-[var(--accent-primary)]">{Math.round(progress)}%</span>
-                    ) : null}
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-1.5 text-[12px] md:text-[13px] font-medium text-[var(--text-muted)]">
-                    {ep.runtime ? <span>{ep.runtime} min</span> : null}
-                    {ep.runtime && ep.airDate ? <span className="w-1 h-1 rounded-full bg-[var(--text-muted)]" /> : null}
-                    {ep.airDate ? <span>{formatAirDate(ep.airDate)}</span> : null}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className={`flex-1 min-w-0 text-[16px] md:text-[18px] font-bold truncate transition-colors ${isCurrent ? "text-[var(--accent-primary)]" : "text-white group-hover:text-white"}`}>
+                          {ep.title || `Episode ${ep.episodeNumber}`}
+                        </h3>
+                      </div>
+                      
+                      <div className="flex items-center gap-2.5 text-[13px] font-semibold text-[var(--text-muted)]">
+                        {ep.runtime ? <span className="bg-white/10 px-2 py-0.5 rounded-md text-[var(--text-secondary)]">{ep.runtime}m</span> : null}
+                        {ep.airDate ? <span>{formatAirDate(ep.airDate)}</span> : null}
+                      </div>
+                    </div>
                   </div>
 
                   {ep.synopsis ? (
-                    <p className="text-[13px] md:text-sm leading-relaxed text-[var(--text-secondary)] line-clamp-2">
+                    <p className="text-[14px] md:text-[15px] leading-[1.6] text-[var(--text-secondary)] line-clamp-2 md:line-clamp-3 mt-3 group-hover:text-white/90 transition-colors">
                       {ep.synopsis}
                     </p>
                   ) : null}
+
+                  {/* Status Badges */}
+                  <div className="mt-4 flex items-center gap-3">
+                    {isCurrent ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[var(--accent-primary)]/15 border border-[var(--accent-primary)]/30 text-[12px] font-bold text-[var(--accent-primary)]">
+                        <span className="w-2 h-2 rounded-full bg-[var(--accent-primary)] animate-pulse shadow-[0_0_8px_var(--accent-glow)]" />
+                        Now Playing
+                      </span>
+                    ) : watched ? (
+                      <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-white/50">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                        Watched
+                      </span>
+                    ) : inProgress ? (
+                      <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[var(--accent-primary)]/80">
+                        {Math.round(progress)}% Watched
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </Link>
             );
