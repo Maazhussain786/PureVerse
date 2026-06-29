@@ -155,7 +155,7 @@ export default function HeroSection({ items }: HeroSectionProps) {
         }
       `}</style>
       <div className="absolute inset-0 z-[3] flex items-end">
-        <div className="w-full w-full mx-auto px-5 sm:px-8 lg:px-16 xl:px-20 pb-14 sm:pb-16 md:pb-24 flex items-end justify-between gap-8">
+        <div className="w-full mx-auto px-5 sm:px-8 lg:px-16 xl:px-20 pb-24 sm:pb-28 md:pb-32 flex items-end justify-between gap-8">
           {/* Left: Featured details */}
           <div className="w-full max-w-[420px] sm:max-w-[520px] md:max-w-[560px] animate-fade-in-up" key={item.id}>
             {/* Eyebrow */}
