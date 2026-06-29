@@ -23,54 +23,47 @@ export default function AppPromoBanner() {
   if (!isVisible) return null;
 
   return (
-    <div className="relative w-full mx-auto px-5 md:px-8 lg:px-16 animate-fade-in-up" style={{ marginBottom: "var(--space-hero-to-section)", marginTop: "24px" }}>
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[var(--bg-elevated)] via-[rgba(163,230,53,0.1)] to-[var(--bg-elevated)] border border-[var(--accent-primary)]/20 shadow-[0_8px_30px_rgba(163,230,53,0.15)] p-5 md:p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+    <div className="w-full px-4 sm:px-5 md:px-8 lg:px-16 animate-fade-in-up mb-10 mt-4">
+      <div className="relative overflow-hidden flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl bg-[var(--bg-elevated)] border border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
         
-        {/* Abstract shapes for background */}
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-[var(--accent-primary)]/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-[var(--accent-primary)]/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Subtle background glow */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent-primary)]/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex items-center gap-5 w-full md:w-auto">
-          {/* App Icon */}
-          <div className="flex-none w-14 h-14 md:w-16 md:h-16 rounded-xl bg-gradient-to-br from-[var(--bg-card)] to-black border border-white/10 flex items-center justify-center shadow-inner overflow-hidden">
-             <img src="/logos/Complete_logo.jpg" alt="PureVerse App" className="w-full h-full object-cover opacity-90" />
-          </div>
-          
-          <div>
-            <h3 className="text-lg md:text-xl font-bold text-white mb-1 tracking-tight" style={{ fontFamily: "var(--font-space)" }}>
-              Experience PureVerse on Android
-            </h3>
-            <p className="text-sm text-[var(--text-secondary)] max-w-lg leading-relaxed">
-              Download our official mobile app for a faster, ad-free streaming experience on the go. Get the latest APK now!
-            </p>
-          </div>
+        {/* Dismiss Button */}
+        <button
+          onClick={handleDismiss}
+          className="flex-none p-1 -ml-1 text-[var(--text-muted)] hover:text-white transition-colors"
+          aria-label="Dismiss"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+
+        {/* App Icon */}
+        <div className="flex-none w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-black border border-white/10 overflow-hidden shadow-inner flex items-center justify-center">
+          <img src="/logos/Complete_logo.jpg" alt="PureVerse" className="w-full h-full object-cover opacity-90" />
+        </div>
+        
+        {/* Text Info */}
+        <div className="flex-1 min-w-0">
+          <h3 className="text-[13px] sm:text-[15px] font-bold text-white truncate tracking-tight">
+            PureVerse App
+          </h3>
+          <p className="text-[11px] sm:text-xs text-[var(--text-muted)] truncate">
+            Faster streaming, ad-free
+          </p>
         </div>
 
-        <div className="relative z-10 flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
-          <a
-            href="https://github.com/Maazhussain786/PureVerse/releases/latest/download/PureVerse.apk"
-            download
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[var(--accent-primary)] text-black font-bold text-sm hover:bg-[var(--accent-hover)] hover:scale-105 hover:shadow-[0_0_20px_var(--accent-glow)] transition-all duration-300"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Download APK
-          </a>
-          
-          <button
-            onClick={handleDismiss}
-            className="p-3 rounded-xl bg-white/5 text-[var(--text-muted)] hover:bg-white/10 hover:text-white transition-colors"
-            aria-label="Dismiss banner"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
+        {/* Install Action */}
+        <a
+          href="https://github.com/Maazhussain786/PureVerse/releases/latest/download/PureVerse.apk"
+          download
+          className="flex-none px-4 py-1.5 sm:px-5 sm:py-2 rounded-full bg-[var(--accent-primary)] text-black font-bold text-[11px] sm:text-xs hover:bg-[var(--accent-hover)] hover:scale-105 hover:shadow-[0_4px_15px_rgba(163,230,53,0.3)] transition-all duration-300"
+        >
+          INSTALL
+        </a>
       </div>
     </div>
   );
