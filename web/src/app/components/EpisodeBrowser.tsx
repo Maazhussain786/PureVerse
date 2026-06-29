@@ -115,7 +115,7 @@ export default function EpisodeBrowser({
 
       {/* Season tabs */}
       {totalSeasons > 1 && (
-        <div className="relative mb-10">
+        <div className="relative mb-16">
           <div ref={tabsRef} className="drag-scroll flex gap-4 overflow-x-auto hide-scrollbar pb-3 px-2 -mx-2">
             {Array.from({ length: totalSeasons }, (_, i) => i + 1).map((num) => {
               const active = num === season;
