@@ -125,7 +125,7 @@ export default function ProfilePage() {
   // ─── Signed-out state ───
   if (!booting && !isSignedIn) {
     return (
-      <main className="min-h-screen pt-32 px-6 flex flex-col items-center text-center">
+      <main className="min-h-screen pt-32 px-6 flex flex-col items-center text-center" style={{ paddingTop: "120px" }}>
         <div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-[var(--accent-primary)]/20 to-[var(--accent-teal)]/10 border border-[var(--accent-primary)]/20 flex items-center justify-center mb-6">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="1.5">
             <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
@@ -148,7 +148,7 @@ export default function ProfilePage() {
 
   if (booting || !user) {
     return (
-      <main className="min-h-screen pt-32 flex justify-center">
+      <main className="min-h-screen pt-32 flex justify-center" style={{ paddingTop: "120px" }}>
         <div className="w-10 h-10 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
       </main>
     );
