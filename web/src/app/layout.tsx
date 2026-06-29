@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "./components/Navbar";
 import MobileTabBar from "./components/MobileTabBar";
 import ClientProviders from "./components/ClientProviders";
+import MobileAppPromoFab from "./components/MobileAppPromoFab";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -48,6 +49,7 @@ export default function RootLayout({
             <Navbar />
             {children}
           </div>
+          <MobileAppPromoFab />
           <MobileTabBar />
         </ClientProviders>
       </body>
