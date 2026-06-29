@@ -4,6 +4,7 @@ import React from "react";
 import HeroSection from "./components/HeroSection";
 import MediaRow from "./components/MediaRow";
 import AnimeSpotlight from "./components/AnimeSpotlight";
+import AppPromoBanner from "./components/AppPromoBanner";
 import { useUserState } from "./components/UserStateContext";
 import { HeroSkeleton, MediaRowSkeleton } from "./components/Skeletons";
 import Link from "next/link";
@@ -170,6 +171,9 @@ export default function Home() {
       ) : (
         <HeroSkeleton />
       )}
+
+      {/* App Promotion Banner */}
+      <AppPromoBanner />
 
       {/* Content Rows — premium OTT spacing (96px from hero, 64/32/20 padding) */}
       <div
