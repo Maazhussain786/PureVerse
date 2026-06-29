@@ -31,7 +31,7 @@ export default function HistoryPage() {
   const { watchHistory, clearHistory, removeFromHistory } = useUserState();
 
   return (
-    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-6 md:px-10 lg:px-14 max-w-[1600px] mx-auto">
+    <main className="min-h-screen pt-32 pb-28 lg:pb-16 px-6 md:px-10 lg:px-14 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>

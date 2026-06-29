@@ -27,7 +27,7 @@ export default function MyListPage() {
   ];
 
   return (
-    <main className="min-h-screen pt-24 pb-28 lg:pb-16 px-6 md:px-10 lg:px-14 max-w-[1600px] mx-auto" style={{ paddingTop: "120px", paddingBottom: "100px", paddingLeft: "40px", paddingRight: "40px" }}>
+    <main className="min-h-screen pt-32 pb-28 lg:pb-16 px-6 md:px-10 lg:px-14 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">
