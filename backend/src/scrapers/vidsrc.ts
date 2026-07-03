@@ -35,15 +35,15 @@ export async function resolveVidSrcStream(
     // fallbacks.
     sources.push(
       {
-        server: 'Videasy',
-        quality: 'Auto',
-        url: `https://player.videasy.net/movie/${rawId}?color=34D399`,
-        type: 'embed',
-      },
-      {
         server: 'VidLink',
         quality: 'Auto',
         url: `https://vidlink.pro/movie/${rawId}`,
+        type: 'embed',
+      },
+      {
+        server: 'Videasy',
+        quality: 'Auto',
+        url: `https://player.videasy.net/movie/${rawId}?color=34D399`,
         type: 'embed',
       },
       {
@@ -88,15 +88,15 @@ export async function resolveVidSrcStream(
     const e = episode || '1';
     sources.push(
       {
-        server: 'Videasy',
-        quality: 'Auto',
-        url: `https://player.videasy.net/tv/${rawId}/${s}/${e}?color=34D399&episodeSelector=true&nextEpisode=true&autoplayNextEpisode=true`,
-        type: 'embed',
-      },
-      {
         server: 'VidLink',
         quality: 'Auto',
         url: `https://vidlink.pro/tv/${rawId}/${s}/${e}`,
+        type: 'embed',
+      },
+      {
+        server: 'Videasy',
+        quality: 'Auto',
+        url: `https://player.videasy.net/tv/${rawId}/${s}/${e}?color=34D399&episodeSelector=true&nextEpisode=true&autoplayNextEpisode=true`,
         type: 'embed',
       },
       {
